@@ -3,6 +3,7 @@ import pandas as pd
 import tifffile
 import trackpy
 from skimage.morphology import white_tophat, disk
+import os
 
 
 # functions for detecting and extracting spots from registered images required prior to decoding
@@ -110,16 +111,25 @@ def load_tiles_to_extract_spots(tifs_path, channels_info, C, R,
                 for ind_cy in range(R):
                     for ind_ch in range(len(channels_info['channel_names'])):
                         if channels_info['channel_names'][ind_ch] != 'DAPI':  # no need for dapi
-                            try:
-                                imgs[:, :, ind_ch, ind_cy] = tifffile.imread(
-                                    tifs_path + tiles_info['filename_prefix'] + channels_info['channel_names'][
-                                        ind_ch] + '_c0' + str(
-                                        ind_cy + 1) + '_' + tile_name + '.tif').astype(np.float32)
-                            except:
-                                imgs[:, :, ind_ch, ind_cy] = tifffile.imread(
-                                    tifs_path + tiles_info['filename_prefix'] + tile_name + '_c0' + str(
-                                        ind_cy + 1) + '_' + channels_info['channel_names'][ind_ch] + '.tif').astype(
-                                    np.float32)
+                            img_name = "%s/%s_%s_c0%s_%s.tif" %(tifs_path,
+                                    tiles_info['filename_prefix'],
+                                    tile_name,
+                                    str(ind_cy+1),
+                                    channels_info['channel_names'][ind_ch]
+                                    )
+
+                            assert  os.path.exists(img_name)
+                            imgs[:, :, ind_ch, ind_cy] = tifffile.imread(img_name).astype(np.float32)
+                            # try:
+                                # imgs[:, :, ind_ch, ind_cy] = tifffile.imread(
+                                    # tifs_path + tiles_info['filename_prefix'] + channels_info['channel_names'][
+                                        # ind_ch] + '_c0' + str(
+                                        # ind_cy + 1) + '_' + tile_name + '.tif').astype(np.float32)
+                            # except:
+                                # imgs[:, :, ind_ch, ind_cy] = tifffile.imread(
+                                    # tifs_path + tiles_info['filename_prefix'] + tile_name + '_c0' + str(
+                                        # ind_cy + 1) + '_' + channels_info['channel_names'][ind_ch] + '.tif').astype(
+                                    # np.float32)
 
                 imgs_coding = imgs[:, :, np.where(np.array(channels_info['coding_chs']) == True)[0], :]
                 # apply top-hat filtering to each coding channel
@@ -140,8 +150,7 @@ def load_tiles_to_extract_spots(tifs_path, channels_info, C, R,
                     # if anchor is not available, form "quasi-anchors" from coding channels
                     anchors = np.swapaxes(np.swapaxes(imgs_coding_tophat.max(axis=2), 0, 2), 1, 2)
 
-                anchors = anchors[anchors_cy_ind_for_spot_detect, :,
-                          :]  # select only those cycles given in anchors_cy_ind_for_spot_detect
+                anchors = anchors[anchors_cy_ind_for_spot_detect, :, :]  # select only those cycles given in anchors_cy_ind_for_spot_detect
 
                 # detect and extract spots from the loaded tile
                 spots_i, centers_i, spots_notophat_i = detect_and_extract_spots(imgs_coding_tophat, anchors, C, R,
