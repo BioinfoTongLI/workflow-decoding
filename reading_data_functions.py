@@ -24,11 +24,13 @@ def barcodes_01_from_letters(barcodes_AGCT, barcode_letters, R):
     return barcodes_01
 
 
-def read_taglist_and_channel_info(data_path):
+def read_taglist_and_channel_info(data_path, taglist_name='taglist.csv', channel_info_name='channel_info.csv'):
     # reads taglist.csv and channel_info.csv and
     # returns barcodes_01 which is a numpy array with 01 entries and dimension K x C x R
-    taglist = read_csv(data_path + 'taglist.csv')
-    channel_info = read_csv(data_path + 'channel_info.csv')
+    taglist = read_csv(data_path + taglist_name)
+    channel_info = read_csv(data_path + channel_info_name)
+    # gene_names = np.array(taglist.Gene)
+    # barcodes_AGCT = np.array(taglist.Channel)
     gene_names = np.array(taglist.Name)
     barcodes_AGCT = np.array(taglist.Code)
 
