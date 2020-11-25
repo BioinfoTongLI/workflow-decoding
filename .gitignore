@@ -150,6 +150,7 @@ dmypy.json
 
 # VIM
 *.un~
+*.swp
 
 # Nextflow
 .nextflow*
@@ -157,3 +158,5 @@ work/
 
 # output
 trackpy*
+human_brain*
+mouse_brain*
