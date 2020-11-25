@@ -93,8 +93,9 @@ def detect_and_extract_spots(imgs_coding, anchors, C, R, imgs_also_without_topha
 
 def load_tiles_to_extract_spots(tifs_path, channels_info, C, R,
                                 tile_names, tiles_info, tiles_to_load,
-                                spots_params, anchor_available=True, anchors_cy_ind_for_spot_detect=None, norm_anchors=False, use_blob_detector=False,
-                                compute_also_without_tophat=False):
+                                spots_params, tile_name_pattern, anchor_available=True, anchors_cy_ind_for_spot_detect=None, norm_anchors=False, use_blob_detector=False,
+                                compute_also_without_tophat=False,
+                                coding_ch_starts_from=0):
     # anchors_cy_ind_for_spot_detect can be any number in {0,..,R-1} to indicate if a single frame should be used
     # for spot detection, otherwise by default all cycles are considered for spot detection
 
@@ -125,14 +126,13 @@ def load_tiles_to_extract_spots(tifs_path, channels_info, C, R,
                 for ind_cy in range(R):
                     for ind_ch in range(len(channels_info['channel_names'])):
                         if channels_info['channel_names'][ind_ch] != 'DAPI':  # no need for dapi
-                            img_name = "%s/%s_%s_c0%s_%s.tif" %(tifs_path,
-                                    tiles_info['filename_prefix'],
-                                    tile_name,
-                                    str(ind_cy+1),
-                                    channels_info['channel_names'][ind_ch]
+                            img_name = tifs_path + tile_name_pattern.format(prefix = tiles_info['filename_prefix'],
+                                    ch_name=channels_info['channel_names'][ind_ch],
+                                    cycle_i=str(coding_ch_starts_from + ind_cy + 1),
+                                    tile_xy=tile_name
                                     )
 
-                            assert  os.path.exists(img_name)
+                            assert os.path.exists(img_name)
                             imgs[:, :, ind_ch, ind_cy] = tifffile.imread(img_name).astype(np.float32)
                             # try:
                                 # imgs[:, :, ind_ch, ind_cy] = tifffile.imread(
