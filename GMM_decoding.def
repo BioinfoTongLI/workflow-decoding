@@ -1,0 +1,11 @@
+BootStrap: docker
+From: continuumio/miniconda3:4.8.2
+
+%post
+    apt-get -y update
+    conda update --all -y
+    pip install -r requirements.txt
+
+%labels
+    Author BioinfoTongLI
+    Version v0.0.1
