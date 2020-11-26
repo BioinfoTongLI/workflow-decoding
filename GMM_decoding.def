@@ -1,10 +1,15 @@
 BootStrap: docker
 From: continuumio/miniconda3:4.8.2
 
+%files
+    ./requirements.txt /requirements.txt
+
 %post
     apt-get -y update
     conda update --all -y
-    pip install -r requirements.txt
+    pip install --upgrade pip
+    pip install -r /requirements.txt
+    conda install pytorch==1.7.0 torchvision torchaudio cudatoolkit=10.2 -c pytorch
 
 %labels
     Author BioinfoTongLI

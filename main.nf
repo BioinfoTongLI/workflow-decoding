@@ -60,6 +60,7 @@ process get_spots {
 process decode {
     echo true
     storeDir params.out_dir + "/" + params.proj_ID + "_decoded"
+    containerOptions = "--nv"
     /*publishDir params.out_dir + "/" + params.proj_ID + "_decoded", mode:"copy"*/
 
     input:
