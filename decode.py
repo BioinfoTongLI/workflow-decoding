@@ -34,7 +34,7 @@ def main(args):
     decoded_spots_df = decoding_output_to_dataframe(out, df_class_names, df_class_codes)
     decoded_df = pd.concat([decoded_spots_df, spot_loc], axis=1)
 
-    decoded_df.to_csv("%s_decoded_df.tsv" %args.stem, sep="\t")
+    decoded_df.to_csv("%s_decoded_df.tsv" %args.stem, sep="\t", index=False)
     with open('%s_decode_out_parameters.pickle' %args.stem, 'wb') as fp:
        pickle.dump(out, fp)
 
