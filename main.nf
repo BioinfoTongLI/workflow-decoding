@@ -27,7 +27,7 @@ process get_meatdata {
     output:
     path "barcodes_01.npy" into barcodes_01
     path "gene_names.npy" into gene_names
-    path "channel_info.pickle" into channels_info, channel_info_for_decode
+    path "channel_info.pickle" into channels_info, channel_info_for_decode, channel_info_for_plot
 
     script:
     """
@@ -40,8 +40,8 @@ process get_spots {
     echo true
     cache "lenient"
     containerOptions = "-B /nfs:/nfs:ro"
-    /*storeDir params.out_dir + "/" + params.proj_ID + "_trackpy_spots"*/
-    publishDir params.out_dir + "/" + params.proj_ID + "_trackpy_spots", mode:"copy"
+    storeDir params.out_dir + "/" + params.proj_ID + "_trackpy_spots"
+    /*publishDir params.out_dir + "/" + params.proj_ID + "_trackpy_spots", mode:"copy"*/
 
     input:
     path channel_info_f from channels_info
@@ -59,8 +59,8 @@ process get_spots {
 
 process decode {
     echo true
-    /*storeDir params.out_dir + "/" + params.proj_ID + "_decoded"*/
-    publishDir params.out_dir + "/" + params.proj_ID + "_decoded", mode:"copy"
+    storeDir params.out_dir + "/" + params.proj_ID + "_decoded"
+    /*publishDir params.out_dir + "/" + params.proj_ID + "_decoded", mode:"copy"*/
 
     input:
     path spot_profile from spot_profile
@@ -76,5 +76,19 @@ process decode {
     script:
     """
     python ${workflow.projectDir}/decode.py -spot_profile ${spot_profile} -spot_loc ${spot_loc} -barcodes_01 ${barcodes_f} -gene_names ${gene_names_f} -channels_info ${channel_info_f} -stem ${params.proj_ID}
+    """
+}
+
+process do_plot {
+    echo true
+
+    input:
+    path decoded_df_f from decoded_df
+    path decode_out_parameters_f from decode_out_parameters
+    path channel_info_f from channel_info_for_plot
+
+    script:
+    """
+    python ${workflow.projectDir}/do_plots.py -decoded_df $decoded_df_f -decode_out_params $decode_out_parameters_f -channels_info ${channel_info_f}
     """
 }
