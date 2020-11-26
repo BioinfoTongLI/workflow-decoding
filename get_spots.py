@@ -25,7 +25,11 @@ def main(args):
     C = channels_info["C"]
     R = channels_info["R"]
 
-    tiles_to_load={'y_start':7, 'y_end':8, 'x_start':6, 'x_end':8} # select which tiles to load, including indices at the end
+    tiles_to_load={
+            'y_start':args.y_range[0],
+            'y_end':args.y_range[1],
+            'x_start':args.x_range[0],
+            'x_end':args.x_range[1]} # select which tiles to load, including indices at the end
     tiles_info={'tile_size':args.tile_size, 'y_max':16, 'x_max':23, 'y_max_size':1000, 'x_max_size':1000, 'filename_prefix':args.filename_prefix}
     spots_params={'trackpy_diam_detect':5, 'trackpy_search_range':3, 'spot_diam_tophat':5, 'trackpy_prc':args.trackpy_percentile} # parameters for spot detection
 
@@ -64,7 +68,10 @@ if __name__ == "__main__":
             required=True)
     parser.add_argument("-coding_ch_starts_from", type=int,
             required=True)
-
+    parser.add_argument("-y_range", type=int, nargs=2,
+            required=True)
+    parser.add_argument("-x_range", type=int, nargs=2,
+            required=True)
     args = parser.parse_args()
 
     main(args)

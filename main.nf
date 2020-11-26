@@ -15,6 +15,8 @@ params.tile_name_pattern = "{prefix}_{tile_xy}_c0{cycle_i}_{ch_name}.tif"
 params.anchor_available = 1
 params.trackpy_percentile = 64
 params.coding_ch_starts_from = 0
+params.x_range = "0 18"
+params.y_range = "0 18"
 
 
 process get_meatdata {
@@ -37,8 +39,9 @@ process get_meatdata {
 process get_spots {
     echo true
     cache "lenient"
-    storeDir params.out_dir + "/" + params.proj_ID + "_trackpy_spots"
-    /*publishDir params.out_dir + "/trackpy_spots", mode:"copy"*/
+    containerOptions = "-B /nfs:/nfs:ro"
+    /*storeDir params.out_dir + "/" + params.proj_ID + "_trackpy_spots"*/
+    publishDir params.out_dir + "/" + params.proj_ID + "_trackpy_spots", mode:"copy"
 
     input:
     path channel_info_f from channels_info
@@ -49,7 +52,7 @@ process get_spots {
 
     script:
     """
-    python ${workflow.projectDir}/get_spots.py -tifs_dir $params.data_dir -stem ${params.proj_ID} -tile_name ${params.auxillary_file_dir}/${params.tile_name} -tile_size ${params.tile_size} -filename_prefix ${params.filename_prefix} -tile_name_pattern ${params.tile_name_pattern} -anchor_available ${params.anchor_available} -trackpy_percentile ${params.trackpy_percentile} -channel_info ${channel_info_f} -coding_ch_starts_from ${params.coding_ch_starts_from}
+    python ${workflow.projectDir}/get_spots.py -tifs_dir $params.data_dir -stem ${params.proj_ID} -tile_name ${params.auxillary_file_dir}/${params.tile_name} -tile_size ${params.tile_size} -filename_prefix ${params.filename_prefix} -tile_name_pattern ${params.tile_name_pattern} -anchor_available ${params.anchor_available} -trackpy_percentile ${params.trackpy_percentile} -channel_info ${channel_info_f} -coding_ch_starts_from ${params.coding_ch_starts_from} -y_range ${params.y_range} -x_range ${params.x_range}
     """
 }
 
