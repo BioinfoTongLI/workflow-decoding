@@ -160,3 +160,5 @@ work/
 trackpy*
 human_brain*
 mouse_brain*
+decoding_metadata/
+run.py
