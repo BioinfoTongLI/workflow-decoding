@@ -13,9 +13,11 @@ import argparse
 import numpy as np
 import pandas as pd
 from decoding_functions import decoding_function, decoding_output_to_dataframe
+import pysnooper
 import pickle
 
 
+@pysnooper.snoop()
 def main(args):
     # load
     spot_profile = np.load(args.spot_profile)
@@ -37,8 +39,9 @@ def main(args):
     decoded_df = pd.concat([decoded_spots_df, spot_loc], axis=1)
 
     decoded_df.to_csv("%s_decoded_df.tsv" % args.stem, sep="\t", index=False)
+
     with open("%s_decode_out_parameters.pickle" % args.stem, "wb") as fp:
-        pickle.dump(out, fp)
+        pickle.dump(out, fp, protocol=4)
 
 
 if __name__ == "__main__":

@@ -31,7 +31,8 @@ def plot_loss(out):
         (1 / out["class_probs"].shape[0] * np.asarray(out["params"]["losses"][10:])),
     )
     plt.title("Loss over iterations")
-    plt.show()
+    # plt.show()
+    plt.savefig("Loss.png")
 
 
 def plot_mean_cov_of_classes(out, R, C):
@@ -65,8 +66,8 @@ def plot_mean_cov_of_classes(out, R, C):
     plt.xticks(np.arange(3, R * C, 4), np.arange(4, R * C + 1, 4))
     plt.colorbar()
     plt.title("Estimated class covariance")
-    # plt.savefig(os.getcwd() + '/out_imgs/' + dataset_name +'_params.png')
-    plt.show()
+    plt.savefig("params.png")
+    # plt.show()
 
 
 def plot_hist_after_thresholding(decoded_df):
@@ -105,8 +106,7 @@ def plot_hist_after_thresholding(decoded_df):
         ),
         fontsize=10,
     )
-    # plt.savefig(os.getcwd() + '/out_imgs/' + dataset_name +'_histogram.png')
-    plt.show()
+    plt.savefig("histogram.png")
 
     print(
         "Histogram of decoded barcodes afther thresholding with {}: \n in total {} spots detected while {} spots decoded ({}%)".format(

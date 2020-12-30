@@ -15,7 +15,6 @@ from skimage.restoration import denoise_wavelet
 from skimage.morphology import white_tophat, disk
 import dask.array as da
 import dask.dataframe as dd
-from dask import delayed
 from dask_image import imread
 import tifffile as tf
 from apeer_ometiff_library import omexmlClass
@@ -29,9 +28,8 @@ def make_in_range(l, upper):
     return l
 
 
-# @delayed
 def get_intensities(img, anchor_coords, r):
-    img = np.array(img)
+    # img = np.array(img)
     shape = img.shape
     intensities = []
     for dy in range(-r, r + 1):
@@ -42,7 +40,9 @@ def get_intensities(img, anchor_coords, r):
             xs = make_in_range(xs, shape[1])
             intensities.append(img[ys, xs, :, :])
             # print(img[ys, xs, :, :])
-    return da.array(intensities)
+    return da.array(
+        intensities,
+    )
 
 
 @pysnooper.snoop()
@@ -51,7 +51,11 @@ def main(args):
     anchor_coords = np.array(spots)
     imgs = da.from_zarr(args.zarr, "normalized_coding_chs")
 
-    intensites = get_intensities(imgs, anchor_coords, args.r)
+    imgs = imgs.rechunk({0: -1, 1: -1, 2: 1, 3: 1})
+
+    intensites = imgs.map_blocks(
+        get_intensities, anchor_coords, args.r, dtype=np.uint16
+    )
 
     np.save("extracted_peak_intensities.npy", da.max(intensites, axis=0).compute())
     spots = spots.compute()

@@ -66,8 +66,8 @@ def main(args):
     rechunked = hat_enhenced.rechunk({0: -1, 1: -1, 2: 1, 3: 1})
     normalized = rechunked.map_blocks(normalize, quantile=args.quantile_for_norm)
     # normalized = rechunked.map_blocks(normalize_gpu, args.quantile_for_norm, dtype="float32")
-    normalized.to_zarr(args.out, "normalized_coding_chs")
-    # hat_enhenced.to_zarr(args.out, "normalized_coding_chs")
+    rechunked_normalized = normalized.rechunk({0: "auto", 1: "auto", 2: 1, 3: 1})
+    rechunked_normalized.to_zarr(args.out, "normalized_coding_chs")
 
     source = zarr.open(args.zarr, mode="r")
     store = zarr.DirectoryStore(args.out)

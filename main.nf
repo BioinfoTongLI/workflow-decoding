@@ -98,10 +98,10 @@ process Preprocess_coding_chs {
 }
 
 
-process Extract_peak_intensities {
+process Extract_peak_intensities_from_zarr_arrays {
     echo true
-    /*storeDir params.out_dir + "peak_intensities"*/
-    publishDir params.out_dir + "peak_intensities", mode:"copy"
+    storeDir params.out_dir + "peak_intensities"
+    /*publishDir params.out_dir + "peak_intensities", mode:"copy"*/
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
 
     input:
@@ -118,9 +118,10 @@ process Extract_peak_intensities {
 }
 
 
-process Decode {
+process Decode_peaks {
     echo true
-    publishDir params.out_dir + "decoded", mode:"copy"
+    storeDir params.out_dir + "decoded"
+    /*publishDir params.out_dir + "decoded", mode:"copy"*/
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
 
     input:
@@ -139,20 +140,25 @@ process Decode {
     """
 }
 
-/*process do_plot {*/
-    /*echo true*/
-    /*container "/nfs/team283_imaging/0Misc/ImageAnalysisTools/gmm_decoding.sif"*/
 
-    /*input:*/
-    /*path decoded_df_f from decoded_df*/
-    /*path decode_out_parameters_f from decode_out_parameters*/
-    /*path channel_info_f from channel_info_for_plot*/
+process Do_plot {
+    echo true
+    containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
+    publishDir params.out_dir + "plots", mode:"copy"
 
-    /*script:*/
-    /*"""*/
-    /*python ${workflow.projectDir}/do_plots.py -decoded_df $decoded_df_f -decode_out_params $decode_out_parameters_f -channels_info ${channel_info_f}*/
-    /*"""*/
-/*}*/
+    input:
+    file decoded_df_f from decoded_df
+    file decode_out_parameters_f from decode_out_parameters
+    file channel_info_f from channel_info_for_plot
+
+    output:
+    file "*.png
+
+    script:
+    """
+    python /gmm_decoding/do_plots.py -decoded_df $decoded_df_f -decode_out_params $decode_out_parameters_f -channels_info ${channel_info_f}
+    """
+}
 
 /////////////////////////////////////////////////////Tmp obsolate
 
