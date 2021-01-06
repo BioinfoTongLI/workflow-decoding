@@ -32,17 +32,20 @@ def get_processed_anchor_ch(anchor_img, chunk_size):
     )
 
     # Wavelet denoise
-    denoised = hat_enhenced.map_overlap(
-        denoise_wavelet,
-        depth=(args.overlaps, args.overlaps, 0),
-        trim=True,
-        boundary="nearest",
-        method="BayesShrink",
-        mode="soft",
-        sigma=5,
-        rescale_sigma=True,
-        multichannel=False,
-    ) * 10 ** 4
+    denoised = (
+        hat_enhenced.map_overlap(
+            denoise_wavelet,
+            depth=(args.overlaps, args.overlaps, 0),
+            trim=True,
+            boundary="nearest",
+            method="BayesShrink",
+            mode="soft",
+            sigma=5,
+            rescale_sigma=True,
+            multichannel=False,
+        )
+        * 10 ** 4
+    )
 
     return denoised.astype(np.uint16).compute()
 
@@ -55,8 +58,9 @@ def main(args):
     pixels = metadata.image(0).Pixels
     ch_names = np.array(pixels.get_channel_names())
 
-    processed_anchor = get_processed_anchor_ch(imgs[ch_names == args.known_anchor],
-            args.chunk_size)
+    processed_anchor = get_processed_anchor_ch(
+        imgs[ch_names == args.known_anchor], args.chunk_size
+    )
 
     # Save
     da.array(processed_anchor).to_zarr("anchor_image.zarr", "processed_anchor")

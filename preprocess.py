@@ -47,7 +47,8 @@ def main(args):
     )
 
     # Wavelet denoise
-    denoised = hat_enhenced.map_overlap(
+    denoised = (
+        hat_enhenced.map_overlap(
             denoise_wavelet,
             depth=(args.overlaps, args.overlaps, 0, 0),
             method="BayesShrink",
@@ -55,7 +56,9 @@ def main(args):
             sigma=5,
             rescale_sigma=True,
             multichannel=False,
-        ) * 10 ** 4
+        )
+        * 10 ** 4
+    )
     denoised = denoised.astype(np.uint16)
 
     # nomralization
