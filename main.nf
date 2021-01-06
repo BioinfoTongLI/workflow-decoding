@@ -51,6 +51,7 @@ process Call_peaks_in_anchor_image {
 
     output:
     file "anchor_peaks.tsv" into processed_anchor
+    file "anchor_image.zarr" into processed_anchor_img_zarr
 
     script:
     """
@@ -98,10 +99,10 @@ process Preprocess_coding_chs {
 }
 
 
-process Extract_peak_intensities_from_zarr_arrays {
+process Extract_peak_intensities_from_preprocessed_arrays {
     echo true
-    storeDir params.out_dir + "peak_intensities"
-    /*publishDir params.out_dir + "peak_intensities", mode:"copy"*/
+    /*storeDir params.out_dir + "peak_intensities"*/
+    publishDir params.out_dir + "peak_intensities", mode:"copy"
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
 
     input:
@@ -120,8 +121,8 @@ process Extract_peak_intensities_from_zarr_arrays {
 
 process Decode_peaks {
     echo true
-    storeDir params.out_dir + "decoded"
-    /*publishDir params.out_dir + "decoded", mode:"copy"*/
+    /*storeDir params.out_dir + "decoded"*/
+    publishDir params.out_dir + "decoded", mode:"copy"
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
 
     input:
@@ -141,7 +142,7 @@ process Decode_peaks {
 }
 
 
-process Do_plot {
+process Do_Plots {
     echo true
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
     publishDir params.out_dir + "plots", mode:"copy"
@@ -152,13 +153,14 @@ process Do_plot {
     file channel_info_f from channel_info_for_plot
 
     output:
-    file "*.png
+    file "*.png"
 
     script:
     """
     python /gmm_decoding/do_plots.py -decoded_df $decoded_df_f -decode_out_params $decode_out_parameters_f -channels_info ${channel_info_f}
     """
 }
+
 
 /////////////////////////////////////////////////////Tmp obsolate
 

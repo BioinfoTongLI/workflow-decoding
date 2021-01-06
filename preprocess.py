@@ -38,32 +38,29 @@ def normalize_gpu(stack, quantile):
 def main(args):
     imgs = da.from_zarr(args.zarr, "coding_ch_images")
 
-    # Wavelet denoise
-    denoised = (
-        imgs.map_overlap(
-            denoise_wavelet,
-            depth=(args.overlaps, args.overlaps, 0, 0),
-            method="BayesShrink",
-            mode="soft",
-            sigma=151,
-            rescale_sigma=True,
-            multichannel=False,
-        )
-        * 10 ** 4
-    )
-    denoised = denoised.astype(np.uint16)
-
     # white tophat enhancement
-    hat_enhenced = denoised.map_overlap(
+    hat_enhenced = imgs.map_overlap(
         white_tophat,
         dtype=np.uint16,
         depth=(args.overlaps, args.overlaps, 0, 0),
         selem=np.expand_dims(disk(args.whitehat_disk_diam), (-2, -1)),
     )
 
+    # Wavelet denoise
+    denoised = hat_enhenced.map_overlap(
+            denoise_wavelet,
+            depth=(args.overlaps, args.overlaps, 0, 0),
+            method="BayesShrink",
+            mode="soft",
+            sigma=5,
+            rescale_sigma=True,
+            multichannel=False,
+        ) * 10 ** 4
+    denoised = denoised.astype(np.uint16)
+
     # nomralization
     # rechunked = imgs.rechunk(
-    rechunked = hat_enhenced.rechunk({0: -1, 1: -1, 2: 1, 3: 1})
+    rechunked = denoised.rechunk({0: -1, 1: -1, 2: 1, 3: 1})
     normalized = rechunked.map_blocks(normalize, quantile=args.quantile_for_norm)
     # normalized = rechunked.map_blocks(normalize_gpu, args.quantile_for_norm, dtype="float32")
     rechunked_normalized = normalized.rechunk({0: "auto", 1: "auto", 2: 1, 3: 1})
