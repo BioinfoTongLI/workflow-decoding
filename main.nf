@@ -3,7 +3,6 @@
 // Copyright (C) 2020 Tong LI <tongli.bioinfo@protonmail.com>
 
 params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/new_opt/gmm-input/"
-params.tile_name = "tile_names.csv"
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
 params.ome_tif = 'path/to/ome.tiff'
@@ -12,6 +11,7 @@ params.out_dir = "./"
 params.anchor_available = 1
 params.trackpy_percentile = 64
 params.coding_ch_starts_from = 0
+params.known_anchor = "c01 Alexa 647"
 
 ome_tif_ch = Channel.fromPath(params.ome_tif).
     into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}
@@ -55,7 +55,7 @@ process Call_peaks_in_anchor_image {
 
     script:
     """
-    python /gmm_decoding/call_peaks_in_anchor.py -ome_tif ${ome_tif}
+    python /gmm_decoding/call_peaks_in_anchor.py -ome_tif ${ome_tif} -known_anchor "${params.known_anchor}"
     """
 }
 
