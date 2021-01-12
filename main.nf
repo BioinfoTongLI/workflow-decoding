@@ -12,6 +12,7 @@ params.anchor_available = 1
 params.trackpy_percentile = 64
 params.coding_ch_starts_from = 0
 params.known_anchor = "c01 Alexa 647"
+params.rna_spot_size = 5
 
 ome_tif_ch = Channel.fromPath(params.ome_tif).
     into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}
@@ -55,7 +56,7 @@ process Call_peaks_in_anchor_image {
 
     script:
     """
-    python /gmm_decoding/call_peaks_in_anchor.py -ome_tif ${ome_tif} -known_anchor "${params.known_anchor}"
+    python /gmm_decoding/call_peaks_in_anchor.py -ome_tif ${ome_tif} -known_anchor "${params.known_anchor}" -spot_diameter ${params.rna_spot_size} -trackpy_percentile ${params.trackpy_percentile}
     """
 }
 
@@ -94,7 +95,7 @@ process Preprocess_coding_chs {
 
     script:
     """
-    python /gmm_decoding/preprocess.py -zarr ${raw_coding_chs} -out ${stem}_processed.zarr
+    python /gmm_decoding/preprocess.py -zarr ${raw_coding_chs} -out ${stem}_processed.zarr -spot_diameter ${params.rna_spot_size}
     """
 }
 

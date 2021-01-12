@@ -20,14 +20,14 @@ from apeer_ometiff_library import omexmlClass
 import trackpy as tp
 
 
-def get_processed_anchor_ch(anchor_img, chunk_size):
+def get_processed_anchor_ch(anchor_img, chunk_size, spot_diameter):
     anchor_img = da.transpose(anchor_img, (1, 2, 0))
     anchor_img = anchor_img.rechunk((chunk_size, chunk_size, 1))
 
     # Tophat enhancement
     hat_enhenced = anchor_img.map_blocks(
         white_tophat,
-        selem=np.expand_dims(disk(args.whitehat_disk_diam), -1),
+        selem=np.expand_dims(disk(spot_diameter), -1),
         dtype=np.uint16,
     )
 
@@ -40,7 +40,7 @@ def get_processed_anchor_ch(anchor_img, chunk_size):
             boundary="nearest",
             method="BayesShrink",
             mode="soft",
-            sigma=5,
+            sigma=spot_diameter,
             rescale_sigma=True,
             multichannel=False,
         )
@@ -59,7 +59,8 @@ def main(args):
     ch_names = np.array(pixels.get_channel_names())
 
     processed_anchor = get_processed_anchor_ch(
-        imgs[ch_names == args.known_anchor], args.chunk_size
+        imgs[ch_names == args.known_anchor], args.chunk_size,
+        args.spot_diameter
     )
 
     # Save
@@ -69,6 +70,7 @@ def main(args):
         processed_anchor,
         diameter=args.spot_diameter,
         percentile=args.trackpy_percentile,
+        separation=3
     )
 
     peaks.to_csv("anchor_peaks.tsv", sep="\t", index=False)
@@ -81,7 +83,7 @@ if __name__ == "__main__":
     parser.add_argument("-spot_diameter", type=int, default=5)
     parser.add_argument("-trackpy_percentile", type=int, default=64)
     parser.add_argument("-known_anchor", type=str, default="c01 anchor")
-    parser.add_argument("-whitehat_disk_diam", type=int, default=5)
+    # parser.add_argument("-whitehat_disk_diam", type=int, default=5)
     parser.add_argument("-overlaps", type=int, default=50)
     parser.add_argument("-chunk_size", type=int, default=4000)
 

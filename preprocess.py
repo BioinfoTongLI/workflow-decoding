@@ -43,7 +43,7 @@ def main(args):
         white_tophat,
         dtype=np.uint16,
         depth=(args.overlaps, args.overlaps, 0, 0),
-        selem=np.expand_dims(disk(args.whitehat_disk_diam), (-2, -1)),
+        selem=np.expand_dims(disk(args.spot_diameter), (-2, -1)),
     )
 
     # Wavelet denoise
@@ -53,7 +53,7 @@ def main(args):
             depth=(args.overlaps, args.overlaps, 0, 0),
             method="BayesShrink",
             mode="soft",
-            sigma=5,
+            sigma=args.spot_diameter,
             rescale_sigma=True,
             multichannel=False,
         )
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("-zarr", type=str, required=True)
     parser.add_argument("-out", type=str, required=True)
     parser.add_argument("-spot_diameter", type=int, default=5)
-    parser.add_argument("-whitehat_disk_diam", type=int, default=5)
+    # parser.add_argument("-whitehat_disk_diam", type=int, default=5)
     parser.add_argument("-overlaps", type=int, default=50)
     parser.add_argument("-quantile_for_norm", type=float, default=99.99)
 
