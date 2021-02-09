@@ -13,6 +13,7 @@ params.coding_ch_starts_from = 0
 params.known_anchor = "c01 Alexa 647"
 params.rna_spot_size = 5
 params.trackpy_separation = 2
+params.decode = false
 
 ome_tif_ch = Channel.fromPath(params.ome_tif).
     into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}
@@ -23,6 +24,9 @@ process Get_meatdata {
     /*storeDir params.out_dir + "decoding_metadata"*/
     publishDir params.out_dir + "decoding_metadata", mode:"copy"
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
+
+    when:
+    params.decode
 
     input:
     file gmm_input_dir from Channel.fromPath(params.auxillary_file_dir)
@@ -83,6 +87,9 @@ process Extract_coding_chs_to_zarr {
     /*storeDir params.out_dir + "coding_chs"*/
     publishDir params.out_dir + "coding_chs", mode:"copy"
 
+    when:
+    params.decode
+
     input:
     file ch_info from channels_info
     file ome_tif from ome_tif_for_peak_intensity_extraction
@@ -104,6 +111,9 @@ process Preprocess_coding_chs {
     /*storeDir params.out_dir + "coding_chs_processed"*/
     publishDir params.out_dir + "coding_chs_processed", mode:"copy"
 
+    when:
+    params.decode
+
     input:
     tuple val(stem), file(raw_coding_chs) from decoding_chs
 
@@ -122,6 +132,9 @@ process Extract_peak_intensities_from_preprocessed_arrays {
     /*storeDir params.out_dir + "peak_intensities"*/
     publishDir params.out_dir + "peak_intensities", mode:"copy"
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
+
+    when:
+    params.decode
 
     input:
     file anchor_peaks from processed_anchor
@@ -142,6 +155,9 @@ process Decode_peaks {
     /*storeDir params.out_dir + "decoded"*/
     publishDir params.out_dir + "decoded", mode:"copy"
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
+
+    when:
+    params.decode
 
     input:
     tuple val(stem), file(spot_profile), file(spot_loc) from paeks_for_decoding
@@ -164,6 +180,9 @@ process Do_Plots {
     echo true
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
     publishDir params.out_dir + "plots", mode:"copy"
+
+    when:
+    params.decode
 
     input:
     file decoded_df_f from decoded_df
