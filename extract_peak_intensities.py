@@ -57,7 +57,7 @@ def main(args):
         get_intensities, anchor_coords, args.r, dtype=np.uint16
     )
 
-    np.save("extracted_peak_intensities.npy", da.max(intensites, axis=0).compute())
+    np.save("extracted_peak_intensities.npy", da.max(intensites, axis=0).compute().astype(np.int16))
     spots = spots.compute()
     spots.columns = map(str.capitalize, spots.columns)
     spots["Tile"] = 0
