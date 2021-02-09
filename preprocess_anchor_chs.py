@@ -41,7 +41,7 @@ def get_processed_anchor_ch(anchor_img, chunk_size, spot_diameter):
             boundary="nearest",
             method="BayesShrink",
             mode="soft",
-            sigma=spot_diameter * 3,
+            sigma=spot_diameter * 1.5,
             rescale_sigma=True,
             multichannel=False,
         )

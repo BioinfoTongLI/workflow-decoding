@@ -6,13 +6,13 @@ params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
 params.ome_tif = 'path/to/ome.tiff'
-params.proj_ID = "mouse_brain"
 params.out_dir = "./"
 params.anchor_available = 1
 params.trackpy_percentile = 64
 params.coding_ch_starts_from = 0
 params.known_anchor = "c01 Alexa 647"
 params.rna_spot_size = 5
+params.trackpy_separation = 2
 
 ome_tif_ch = Channel.fromPath(params.ome_tif).
     into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}
@@ -20,8 +20,8 @@ ome_tif_ch = Channel.fromPath(params.ome_tif).
 process Get_meatdata {
     echo true
     cache "lenient"
-    storeDir params.out_dir + "decoding_metadata"
-    /*publishDir params.out_dir + "decoding_metadata", mode:"copy"*/
+    /*storeDir params.out_dir + "decoding_metadata"*/
+    publishDir params.out_dir + "decoding_metadata", mode:"copy"
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
 
     input:
@@ -40,10 +40,10 @@ process Get_meatdata {
     """
 }
 
-
-process Call_peaks_in_anchor_image {
+process Preprocess_anchor_image {
     echo true
-    storeDir params.out_dir + "anchor_peaks"
+    /*storeDir params.out_dir + "anchor_peaks"*/
+    publishDir params.out_dir + "anchor_peaks", mode:"copy"
     /*publishDir params.out_dir + "anchor_peaks", mode:"copy"*/
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
 
@@ -51,20 +51,37 @@ process Call_peaks_in_anchor_image {
     file ome_tif from ome_tif_for_anchor_peak_calling
 
     output:
-    file "anchor_peaks.tsv" into processed_anchor
     file "anchor_image.zarr" into processed_anchor_img_zarr
 
     script:
     """
-    python /gmm_decoding/call_peaks_in_anchor.py -ome_tif ${ome_tif} -known_anchor "${params.known_anchor}" -spot_diameter ${params.rna_spot_size} -trackpy_percentile ${params.trackpy_percentile}
+    python /gmm_decoding/preprocess_anchor_chs.py -ome_tif ${ome_tif} -known_anchor "${params.known_anchor}"
     """
 }
 
+process Call_peaks_in_anchor {
+    echo true
+    /*storeDir params.out_dir + "anchor_peaks"*/
+    publishDir params.out_dir + "anchor_peaks", mode:"copy"
+    containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
+
+    input:
+    file anchor_zarr from processed_anchor_img_zarr
+
+    output:
+    file "anchor_peaks.tsv" into processed_anchor
+
+    script:
+    """
+    python /gmm_decoding/call_peaks_in_anchor.py -anchor_zarr ${anchor_zarr} -spot_diameter ${params.rna_spot_size} -trackpy_percentile ${params.trackpy_percentile} -trackpy_search_range 9 -peak_separation ${params.trackpy_separation}
+    """
+}
 
 process Extract_coding_chs_to_zarr {
     echo true
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
-    storeDir params.out_dir + "coding_chs"
+    /*storeDir params.out_dir + "coding_chs"*/
+    publishDir params.out_dir + "coding_chs", mode:"copy"
 
     input:
     file ch_info from channels_info
@@ -84,8 +101,8 @@ process Extract_coding_chs_to_zarr {
 process Preprocess_coding_chs {
     echo true
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro --gpus all"
-    storeDir params.out_dir + "coding_chs_processed"
-    /*publishDir params.out_dir + "coding_chs_processed", mode:"copy"*/
+    /*storeDir params.out_dir + "coding_chs_processed"*/
+    publishDir params.out_dir + "coding_chs_processed", mode:"copy"
 
     input:
     tuple val(stem), file(raw_coding_chs) from decoding_chs
@@ -95,7 +112,7 @@ process Preprocess_coding_chs {
 
     script:
     """
-    python /gmm_decoding/preprocess.py -zarr ${raw_coding_chs} -out ${stem}_processed.zarr -spot_diameter ${params.rna_spot_size}
+    python /gmm_decoding/preprocess_coding_chs.py -zarr ${raw_coding_chs} -out ${stem}_processed.zarr -spot_diameter ${params.rna_spot_size}
     """
 }
 
