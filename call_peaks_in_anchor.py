@@ -25,23 +25,24 @@ def main(args):
 
     if processed_anchor.shape[0] > 1:
         tracks = tp.link_df(
-                tp.batch(np.array(processed_anchor),
-                    diameter=args.spot_diameter,
-                    percentile=args.trackpy_percentile,
-                    separation=args.peak_separation
-                    ),
-                search_range=5
-            )
+            tp.batch(
+                np.array(processed_anchor),
+                diameter=args.spot_diameter,
+                percentile=args.trackpy_percentile,
+                separation=args.peak_separation,
+            ),
+            search_range=5,
+        )
         # peaks = tracks['particle'][tracks['frame'] == 0].unique()
     else:
         peaks = tp.locate(
             np.array(processed_anchor),
             diameter=args.spot_diameter,
             percentile=args.trackpy_percentile,
-            separation=args.peak_separation
+            separation=args.peak_separation,
         )
 
-    peaks.to_csv("%s_peaks.tsv" %args.stem, sep="\t", index=False)
+    peaks.to_csv("%s_peaks.tsv" % args.stem, sep="\t", index=False)
 
 
 if __name__ == "__main__":

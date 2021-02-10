@@ -11,23 +11,12 @@ Preprocess coding channel images
 """
 import argparse
 import dask.array as da
-import pysnooper
 import numpy as np
 from skimage.restoration import denoise_wavelet
 from skimage.morphology import white_tophat, disk
 import zarr
 
 
-def normalize_gpu(stack, quantile):
-    import cupy
-
-    stack = cupy.array(np.array(stack))
-    img_min = cupy.percentile(stack, q=quantile, axis=(0, 1), keepdims=True)
-    img_max = cupy.percentile(stack, q=1 - quantile, axis=(0, 1), keepdims=True)
-    return (stack - img_min) / (img_max - img_min)
-
-
-@pysnooper.snoop()
 def main(args):
     imgs = da.from_zarr(args.zarr, "coding_ch_images")
 
@@ -51,8 +40,7 @@ def main(args):
             multichannel=False,
         )
         * 10 ** 4
-    )
-    denoised = denoised.astype(np.uint16)
+    ).astype(np.uint16)
 
     rechunked = denoised.rechunk({0: -1, 1: -1, 2: 1, 3: 1})
     rechunked = rechunked.rechunk({0: "auto", 1: "auto", 2: 1, 3: 1})

@@ -18,7 +18,6 @@ from dask_image import imread
 import tifffile as tf
 from apeer_ometiff_library import omexmlClass
 import trackpy as tp
-import pysnooper
 
 
 def get_processed_anchor_ch(anchor_img, chunk_size, spot_diameter):
@@ -46,12 +45,11 @@ def get_processed_anchor_ch(anchor_img, chunk_size, spot_diameter):
             multichannel=False,
         )
         * 10 ** 4
-    )
+    ).astype(np.uint16)
 
-    return denoised.astype(np.uint16).compute()
+    return denoised.compute()
 
 
-@pysnooper.snoop()
 def main(args):
     # Retrieve anchor channel
     imgs = imread.imread(args.ome_tif)
@@ -63,12 +61,11 @@ def main(args):
     target_ch_masks = [args.known_anchor in ch for ch in ch_names]
 
     processed_anchor = get_processed_anchor_ch(
-        imgs[target_ch_masks], args.chunk_size,
-        args.spot_diameter
+        imgs[target_ch_masks], args.chunk_size, args.spot_diameter
     )
 
     # Save
-    da.array(processed_anchor).to_zarr("%s_anchor.zarr" %args.stem, "processed")
+    da.array(processed_anchor).to_zarr("%s_anchor.zarr" % args.stem, "processed")
 
 
 if __name__ == "__main__":
