@@ -68,13 +68,14 @@ def main(args):
     )
 
     # Save
-    da.array(processed_anchor).to_zarr("anchor_image.zarr", "processed_anchor")
+    da.array(processed_anchor).to_zarr("%s_anchor.zarr" %args.stem, "processed")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-ome_tif", type=str, required=True)
+    parser.add_argument("-stem", type=str, required=True)
     parser.add_argument("-spot_diameter", type=int, default=5)
     parser.add_argument("-known_anchor", type=str, default="c01 anchor")
     # parser.add_argument("-whitehat_disk_diam", type=int, default=5)

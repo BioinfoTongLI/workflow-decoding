@@ -1,0 +1,8 @@
+ome_tif :
+  - '/nfs/team283_imaging/0HarmonyStitched/LY_BRC/LY_BRC_LY10011__2020-09-11T18_39_23-Measurement 3b/LY_BRC_LY10011_PD39939a_Nucleus_MALAT1_Meas3b_A2_F1T0.ome.tif'
+  - '/nfs/team283_imaging/0HarmonyStitched/LY_BRC/LY_BRC_LY10012__2020-10-02T15_15_47-Measurement 4b/LY_BRC_LY10012_PD39919a_Nucleus_MALAT1_Meas4b_A2_F1T0.ome.tif'
+out_dir : "./peak_calling_only_test"
+known_anchor : "Alexa 647"
+trackpy_separation : 2
+rna_spot_size : 5
+trackpy_percentile : 90

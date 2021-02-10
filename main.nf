@@ -2,18 +2,21 @@
 
 // Copyright (C) 2020 Tong LI <tongli.bioinfo@protonmail.com>
 
+params.ome_tif = 'path/to/ome.tiff'
+params.out_dir = "./"
+params.known_anchor = "c01 Alexa 647"
+params.trackpy_separation = 2
+params.rna_spot_size = 5
+params.trackpy_percentile = 90
+
+params.decode = false
 params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/new_opt/gmm-input/"
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
-params.ome_tif = 'path/to/ome.tiff'
-params.out_dir = "./"
-params.anchor_available = 1
-params.trackpy_percentile = 64
+
+// not used in this version
 params.coding_ch_starts_from = 0
-params.known_anchor = "c01 Alexa 647"
-params.rna_spot_size = 5
-params.trackpy_separation = 2
-params.decode = false
+params.anchor_available = 1
 
 ome_tif_ch = Channel.fromPath(params.ome_tif).
     into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}
@@ -48,18 +51,18 @@ process Preprocess_anchor_image {
     echo true
     /*storeDir params.out_dir + "anchor_peaks"*/
     publishDir params.out_dir + "anchor_peaks", mode:"copy"
-    /*publishDir params.out_dir + "anchor_peaks", mode:"copy"*/
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
 
     input:
     file ome_tif from ome_tif_for_anchor_peak_calling
 
     output:
-    file "anchor_image.zarr" into processed_anchor_img_zarr
+    tuple val(stem), file("${stem}_anchor.zarr") into processed_anchor_img_zarr
 
     script:
+    stem = file(ome_tif).baseName
     """
-    python /gmm_decoding/preprocess_anchor_chs.py -ome_tif ${ome_tif} -known_anchor "${params.known_anchor}"
+    python /gmm_decoding/preprocess_anchor_chs.py -ome_tif ${ome_tif} -known_anchor "${params.known_anchor}" -stem ${stem}
     """
 }
 
@@ -70,14 +73,14 @@ process Call_peaks_in_anchor {
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
 
     input:
-    file anchor_zarr from processed_anchor_img_zarr
+    tuple stem, file(anchor_zarr) from processed_anchor_img_zarr
 
     output:
-    file "anchor_peaks.tsv" into processed_anchor
+    tuple stem, file("${stem}_peaks.tsv") into processed_anchor
 
     script:
     """
-    python /gmm_decoding/call_peaks_in_anchor.py -anchor_zarr ${anchor_zarr} -spot_diameter ${params.rna_spot_size} -trackpy_percentile ${params.trackpy_percentile} -trackpy_search_range 9 -peak_separation ${params.trackpy_separation}
+    python /gmm_decoding/call_peaks_in_anchor.py -anchor_zarr ${anchor_zarr} -spot_diameter ${params.rna_spot_size} -trackpy_percentile ${params.trackpy_percentile} -trackpy_search_range 9 -peak_separation ${params.trackpy_separation} -stem ${stem}
     """
 }
 
@@ -137,8 +140,8 @@ process Extract_peak_intensities_from_preprocessed_arrays {
     params.decode
 
     input:
-    file anchor_peaks from processed_anchor
-    tuple val(stem), file(zarr) from processed_chs
+    tuple val(stem), file(anchor_peaks), file(zarr) from processed_anchor.combine(processed_chs, by:0)
+    /*tuple val(stem), file(zarr) from */
 
     output:
     tuple val(stem), file("extracted_peak_intensities.npy"), file("spot_locs.csv") into paeks_for_decoding
