@@ -3,7 +3,7 @@ ome_tif :
 out_dir : "/nfs/team283_imaging/PC_LIV/playground_Tong/PC_LIV_20x/"
 known_anchor : "c01 Alexa 647"
 trackpy_separation : 2
-rna_spot_size : 11
+rna_spot_size : 5
 trackpy_percentile : 90
 decode : true
 
