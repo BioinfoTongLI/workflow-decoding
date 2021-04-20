@@ -2,18 +2,14 @@
 
 // Copyright (C) 2020 Tong LI <tongli.bioinfo@protonmail.com>
 
-nextflow.enable.dsl=2
-
-include { Extract_ch; Projection } from workflow.projectDir + '/nf_module_image_preprocessing/preprocess.nf'
-
 params.ome_tif = 'path/to/ome.tiff'
-params.out_dir = "./test/"
+params.out_dir = "./"
 params.known_anchor = "c01 Alexa 647"
 params.trackpy_separation = 2
 params.rna_spot_size = 5
 params.trackpy_percentile = 90
 
-params.decode = true
+params.decode = false
 params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/new_opt/gmm-input/"
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
@@ -22,8 +18,8 @@ params.channel_info_name = "channel_info.csv"
 params.coding_ch_starts_from = 0
 params.anchor_available = 1
 
-/*ome_tif_ch = Channel.fromPath(params.ome_tif).*/
-    /*into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}*/
+ome_tif_ch = Channel.fromPath(params.ome_tif).
+    into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}
 
 process Get_meatdata {
     echo true
@@ -36,14 +32,14 @@ process Get_meatdata {
     params.decode
 
     input:
-    path gmm_input_dir
-    val taglist_name
-    val channel_info_name
+    file gmm_input_dir from Channel.fromPath(params.auxillary_file_dir)
+    val taglist_name from params.taglist_name
+    val channel_info_name from params.channel_info_name
 
     output:
-    path "barcodes_01.npy", emit: barcodes
-    path "gene_names.npy", emit: gene_names
-    path "channel_info.pickle", emit: channel_infos
+    file "barcodes_01.npy" into barcodes_01
+    file "gene_names.npy" into gene_names
+    file "channel_info.pickle" into channels_info, channel_info_for_decode, channel_info_for_plot
 
     script:
     """
@@ -206,9 +202,48 @@ process Do_Plots {
 }
 
 
-workflow {
-    Get_meatdata(params.auxillary_file_dir, params.taglist_name, params.channel_info_name)
-    Get_meatdata.out[1].view()
-    println Get_meatdata.out[0]
-    /*Extract_ch()*/
-}
+/////////////////////////////////////////////////////Tmp obsolate
+
+
+/*Images are prepared beforehand, so maybe not needed here*/
+/*process get_ch_images {*/
+    /*echo true*/
+    /*storeDir params.out_dir + "ch_zarrs"*/
+    /*[>containerOptions = "-B /nfs:/nfs:ro"<]*/
+
+    /*input:*/
+    /*file ome_tif from Channel.fromPath(params.ome_tif)*/
+
+    /*output:*/
+    /*path "anchors.zarr" into anchors_zarrs*/
+    /*path "cycle*.zarr" into decoding_zarrs*/
+
+    /*script:*/
+    /*"""*/
+    /*python3 ${baseDir}/get_target_chs.py -ome_tif ${ome_tif} -first_decoding_cycle 1 -anchor_ch_suffix "c01_Alexa_647"*/
+    /*"""*/
+/*}*/
+
+
+/*
+    elatix registration: works fine but worse than optical-flow-based method
+*/
+/*process register_to_anchor {*/
+    /*echo true*/
+    /*publishDir params.out_dir + "ch_zarrs_preprocessed", mode:"copy"*/
+    /*containerOptions " --nv "*/
+
+    /*[>maxForks 4<]*/
+
+    /*input:*/
+    /*tuple path(anchor), path(decode_zarr) from anchors_zarrs.combine(decoding_zarrs.flatMap())*/
+
+    /*output:*/
+    /*path "*_registered.zarr" into registered_zarr*/
+    /*path "*_registered.pickle" optional true into registration_params*/
+
+    /*script:*/
+    /*"""*/
+    /*python3 ${baseDir}/preprocess.py -anchor_zarr ${anchor} -decode_zarr ${decode_zarr}*/
+    /*"""*/
+/*}*/
