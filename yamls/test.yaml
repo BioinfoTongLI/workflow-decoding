@@ -1,0 +1,7 @@
+ome_tif  :
+  - "/nfs/team283_imaging/playground_Tong/cellpose_stardist_compare/201003_051055-V__2020-10-03T05_22_22-Measurement 1b_max/A3_F1T0_max.ome.tiff"
+target_indexes     : "1 2"
+max_fork : 10
+out_dir   : "./test"
+sif_dir  : "/home/ubuntu/sifs/"
+format  : '--zarr'
