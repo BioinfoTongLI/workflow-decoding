@@ -15,9 +15,8 @@ from skimage.restoration import denoise_wavelet
 from skimage.morphology import white_tophat, disk
 import dask.array as da
 from dask_image import imread
-import tifffile as tf
-from apeer_ometiff_library import omexmlClass
 import trackpy as tp
+from aicsimageio import AICSImage
 
 
 def get_processed_anchor_ch(anchor_img, chunk_size, spot_diameter):
@@ -52,20 +51,16 @@ def get_processed_anchor_ch(anchor_img, chunk_size, spot_diameter):
 
 def main(args):
     # Retrieve anchor channel
-    imgs = imread.imread(args.ome_tif)
-    with tf.TiffFile(args.ome_tif) as fh:
-        metadata = omexmlClass.OMEXML(fh.ome_metadata)
-    pixels = metadata.image(0).Pixels
-    ch_names = np.array(pixels.get_channel_names())
+    imgs = AICSImage(args.ome_tif)
 
-    target_ch_masks = [args.known_anchor in ch for ch in ch_names]
+    print(imgs.dims, imgs.shape)
+    print(imgs.get_image_dask_data("YX", T=0, Z=0, S=0, C=args.known_anchor_index))
+    # processed_anchor = get_processed_anchor_ch(
+        # imgs[args.known_anchor_index], args.chunk_size, args.spot_diameter
+    # )
 
-    processed_anchor = get_processed_anchor_ch(
-        imgs[target_ch_masks], args.chunk_size, args.spot_diameter
-    )
-
-    # Save
-    da.array(processed_anchor).to_zarr("%s_anchor.zarr" % args.stem, "processed")
+    # # Save
+    # da.array(processed_anchor).to_zarr("%s_anchor.zarr" % args.stem, "processed")
 
 
 if __name__ == "__main__":
@@ -74,7 +69,7 @@ if __name__ == "__main__":
     parser.add_argument("-ome_tif", type=str, required=True)
     parser.add_argument("-stem", type=str, required=True)
     parser.add_argument("-spot_diameter", type=int, default=5)
-    parser.add_argument("-known_anchor", type=str, default="c01 anchor")
+    parser.add_argument("-known_anchor_index", type=int, default=4)
     # parser.add_argument("-whitehat_disk_diam", type=int, default=5)
     parser.add_argument("-overlaps", type=int, default=50)
     parser.add_argument("-chunk_size", type=int, default=4000)
