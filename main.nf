@@ -13,6 +13,8 @@ params.known_anchor = "c01 Alexa 647"
 params.trackpy_separation = 2
 params.rna_spot_size = 5
 params.trackpy_percentile = 90
+params.anchor_ch_indexes = 4
+params.format = "--zarr"
 
 params.decode = true
 params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/new_opt/gmm-input/"
@@ -85,7 +87,7 @@ process Process_tracks {
 
 process Extract_peak_intensities_from_preprocessed_arrays {
     echo true
-    storeDir params.out_dir + "peak_intensities"
+    storeDir params.out_dir + "/peak_intensities"
     /*publishDir params.out_dir + "peak_intensities", mode:"copy"*/
 
     input:
@@ -155,7 +157,7 @@ process Do_Plots {
 workflow {
     Get_meatdata(params.auxillary_file_dir, params.taglist_name, params.channel_info_name)
     /*println Get_meatdata.out[0]*/
-    extract_anchor_chs(channel.fromPath(params.ome_tif), params.anchor_ch_indexes, params.format)
+    extract_anchor_chs(Channel.fromPath(params.ome_tif), params.anchor_ch_indexes, params.format)
     Enhance_spots(extract_anchor_chs.out.extracted_chs)
     Call_peaks_in_anchor(Enhance_spots.out.processed_anchor_img_zarr)
     /*println Call_peaks_in_anchor.out.peaks_from_anchor_ch*/
