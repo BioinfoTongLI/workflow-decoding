@@ -1,3 +1,0 @@
-[submodule "nf_module_image_preprocessing"]
-	path = nf_module_image_preprocessing
-	url = https://gitlab.internal.sanger.ac.uk/tl10/nf_module_image_preprocessing.git
