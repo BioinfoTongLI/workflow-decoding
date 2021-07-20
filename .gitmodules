@@ -1,0 +1,3 @@
+[submodule "nf_module_image_convert"]
+	path = nf_module_image_convert
+	url = https://gitlab.internal.sanger.ac.uk/tl10/nf_module_image_convert.git
