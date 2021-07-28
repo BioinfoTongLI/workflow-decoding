@@ -163,3 +163,6 @@ mouse_brain*
 decoding_metadata/
 run.py
 test/
+
+# container
+*.sif
