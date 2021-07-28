@@ -1,5 +1,5 @@
 BootStrap: docker
-From: nvidia/cuda:11.3.0-cudnn8-runtime-ubuntu18.04
+From: nvidia/cuda:11.2.0-cudnn8-runtime-ubuntu18.04
 
 %files
     ./requirements.txt /requirements.txt
@@ -20,6 +20,7 @@ From: nvidia/cuda:11.3.0-cudnn8-runtime-ubuntu18.04
     /opt/conda/bin/pip install scikit-image>=0.18 ome-zarr trackpy imagecodecs
     /opt/conda/bin/conda install -y numpy pyyaml scipy ipython mkl mkl-include cython typing dask-image tifffile pandas seaborn natsort pip
     /opt/conda/bin/conda install -y -c rapidsai -c conda-forge/label/cupy_rc -c conda-forge cucim dask-cuda cudatoolkit=11.2
+    /opt/conda/bin/conda install -y -c rapidsai -c nvidia -c numba -c conda-forge cudf=21.06 python=3.7 cudatoolkit=11.2
     /opt/conda/bin/conda clean -ya
 
 %labels
