@@ -4,8 +4,6 @@
 
 nextflow.enable.dsl=2
 
-include { bf2raw } from projectDir + '/nf_module_image_convert/main.nf'
-
 params.ome_tif = 'path/to/ome.tiff'
 params.out_dir = "./test/"
 params.known_anchor = "c01 Alexa 647"
@@ -23,9 +21,34 @@ params.channel_info_name = "channel_info.csv"
 // not used in this version
 params.coding_ch_starts_from = 0
 params.anchor_available = 1
+params.max_n_worker = 25
 
 /*ome_tif_ch = Channel.fromPath(params.ome_tif).*/
     /*into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}*/
+
+/*
+ * bf2raw: The bioformats2raw application converts the input image file to
+ * an intermediate directory of tiles in the output directory.
+ */
+process bf2raw {
+    echo true
+    container "gitlab-registry.internal.sanger.ac.uk/bayraktar-lab/image-convert:latest"
+    /*storeDir params.out_dir + "/raws"*/
+    publishDir params.out_dir, mode:"copy"
+
+    input:
+    path(img)
+
+    output:
+    tuple val(stem), file("${stem}")
+
+    script:
+    stem = img.baseName
+    """
+    bioformats2raw --max_workers ${params.max_n_worker} --resolutions 7 --no-hcs $img "${stem}"
+    """
+}
+
 
 process Get_meatdata {
     echo true
