@@ -6,22 +6,25 @@ nextflow.enable.dsl=2
 
 params.ome_tif = 'path/to/ome.tiff'
 params.out_dir = "./test/"
-params.known_anchor = "c01 Alexa 647"
-params.trackpy_separation = 2
 params.rna_spot_size = 5
-params.trackpy_percentile = 90
 params.anchor_ch_indexes = 4
-params.format = "--zarr"
 
-params.decode = true
 params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/new_opt/gmm-input/"
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
 
-// not used in this version
-params.coding_ch_starts_from = 0
-params.anchor_available = 1
+params.decode = true
 params.max_n_worker = 25
+
+// not used in this version
+
+/*params.tile_name : "N1234F_tile_names.csv"*/
+/*params.coding_ch_starts_from = 0*/
+/*params.anchor_available = 1*/
+
+/*params.known_anchor = "c01 Alexa 647"*/
+/*params.trackpy_percentile = 90*/
+/*params.trackpy_separation = 2*/
 
 /*ome_tif_ch = Channel.fromPath(params.ome_tif).*/
     /*into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}*/
