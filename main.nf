@@ -33,8 +33,8 @@ params.max_n_worker = 25
 process bf2raw {
     echo true
     container "gitlab-registry.internal.sanger.ac.uk/bayraktar-lab/image-convert:latest"
-    /*storeDir params.out_dir + "/raws"*/
-    publishDir params.out_dir, mode:"copy"
+    storeDir params.out_dir + "/raws"
+    /*publishDir params.out_dir, mode:"copy"*/
 
     input:
     path(img)
@@ -53,8 +53,11 @@ process bf2raw {
 process Get_meatdata {
     echo true
     cache "lenient"
-    storeDir params.out_dir + "/decoding_metadata"
-    /*publishDir params.out_dir + "/decoding_metadata", mode:"copy"*/
+    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    containerOptions "-v ${workflow.projectDir}:${workflow.projectDir}"
+
+    /*storeDir params.out_dir + "/decoding_metadata"*/
+    publishDir params.out_dir + "/decoding_metadata", mode:"copy"
 
     input:
     path gmm_input_dir
@@ -76,9 +79,10 @@ process Get_meatdata {
 process Enhance_spots {
     echo true
     cache "lenient"
-    storeDir params.out_dir + "/anchor_spots"
-    /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
-    containerOptions "--nv"
+    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    /*storeDir params.out_dir + "/anchor_spots"*/
+    publishDir params.out_dir + "/anchor_spots", mode:"copy"
+    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
 
     input:
     tuple val(stem), path(zarr)
@@ -99,10 +103,11 @@ process Enhance_spots {
 process Deepblink_and_Track {
     echo true
     cache "lenient"
-    container "/home/ubuntu/sifs/deepblink-2021-07-22-caf58c80de23.sif"
-    containerOptions "--nv"
-    storeDir params.out_dir + "/anchor_spots"
-    /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
+    /*container "/home/ubuntu/sifs/deepblink-2021-07-22-caf58c80de23.sif"*/
+    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:deepblink"
+    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
+    /*storeDir params.out_dir + "/anchor_spots"*/
+    publishDir params.out_dir + "/anchor_spots", mode:"copy"
 
     input:
     tuple val(stem), path(zarr)
@@ -120,6 +125,8 @@ process Deepblink_and_Track {
 process Call_peaks_in_anchor {
     echo true
     /*storeDir params.out_dir + "/anchor_spots"*/
+    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
     publishDir params.out_dir + "/anchor_spots", mode:"copy"
 
     input:
@@ -139,9 +146,8 @@ process Call_peaks_in_anchor {
 process Process_peaks {
     echo true
     cache "lenient"
-    /*container "container/rapids_gmm.sif"*/
     container "docker://rapidsai/rapidsai:cuda11.2-base-ubuntu20.04-py3.8"
-    containerOptions "--nv"
+    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
     /*storeDir params.out_dir + "/anchor_spots"*/
     publishDir params.out_dir + "/anchor_spots", mode:"copy"
 
@@ -160,6 +166,8 @@ process Process_peaks {
 
 process Extract_peak_intensities {
     echo true
+    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
     /*storeDir params.out_dir + "/peak_intensities"*/
     publishDir params.out_dir + "/peak_intensities", mode:"copy"
 
@@ -180,8 +188,9 @@ process Extract_peak_intensities {
 process Decode_peaks {
     echo true
     /*storeDir params.out_dir + "decoded"*/
+    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
     publishDir params.out_dir + "decoded", mode:"copy"
-    containerOptions "--nv"
 
     when:
     params.decode
@@ -205,6 +214,7 @@ process Decode_peaks {
 
 process Do_Plots {
     echo true
+    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
     publishDir params.out_dir + "plots", mode:"copy"
 
