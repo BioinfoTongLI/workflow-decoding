@@ -9,7 +9,7 @@
 """
 Use anchor coordinates to extract intensities
 """
-import argparse
+import fire
 import numpy as np
 from skimage.restoration import denoise_wavelet
 from skimage.morphology import white_tophat, disk
@@ -17,9 +17,12 @@ import dask.array as da
 import dask.dataframe as dd
 from dask_image import imread
 import tifffile as tf
-from apeer_ometiff_library import omexmlClass
-import pysnooper
+
+import trackpy as tp
 import pickle
+from ome_zarr.reader import Reader
+from ome_zarr.io import parse_url
+from pathlib import Path
 
 
 def make_in_range(l, upper):
@@ -28,111 +31,121 @@ def make_in_range(l, upper):
     return l
 
 
-def get_intensities(img, anchor_coords, r):
+def get_intensities(img, peaks, r):
     # img = np.array(img)
     shape = img.shape
     intensities = []
     for dy in range(-r, r + 1):
         for dx in range(-r, r + 1):
-            ys = anchor_coords[:, 0] + dy
-            xs = anchor_coords[:, 1] + dx
+            ys = peaks[:, 0] + dy
+            xs = peaks[:, 1] + dx
             ys = make_in_range(ys, shape[0])
             xs = make_in_range(xs, shape[1])
             intensities.append(img[ys, xs, :, :])
             # print(img[ys, xs, :, :])
-    return da.array(
-        intensities,
-    )
+    return da.array(intensities)
 
 
-@pysnooper.snoop()
-def main(args):
-    spots = dd.read_csv(args.anchors.name, sep="\t")[["y", "x"]].astype(np.uint32)
-    anchor_coords = np.array(spots)
-    imgs = da.from_zarr(args.zarr, "normalized_coding_chs")
+def main_multicycle(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from=1):
+    peaks = dd.read_csv(peaks, sep="\t")[
+        ["y_int", "x_int", "frame", "particle"]
+    ].compute()
+    peaks = peaks[peaks.frame >= coding_cyc_starts_from]
+    peaks["frame"] = peaks.frame - coding_cyc_starts_from
+    print(peaks)
 
-    imgs = imgs.rechunk({0: -1, 1: -1, 2: 1, 3: 1})
+    with open(channel_info, "rb") as fp:
+        channel_info = pickle.load(fp)
 
-    intensites = imgs.map_blocks(
-        get_intensities, anchor_coords, args.r, dtype=np.uint16
-    )
+    raw_zarr = Path(raw_zarr)
+    assert raw_zarr.exists()
+    reader = Reader(parse_url(raw_zarr))
+    raw_data = list(reader())[0].data[0].squeeze()
 
-    np.save(
-        "extracted_peak_intensities.npy",
-        da.max(intensites, axis=0).compute().astype(np.int16),
-    )
-    spots = spots.compute()
-    spots.columns = map(str.capitalize, spots.columns)
-    spots["Tile"] = 0
-    spots.to_csv("spot_locs.csv", index=False)
+    print(raw_data)
+    # print(channel_info)
+    R = channel_info["R"]
+    peak_intensities = []
+    for i in range(R):
+        cyc_ch_indexes = (i + coding_cyc_starts_from) * len(
+            channel_info["coding_chs"]
+        ) + np.where(channel_info["coding_chs"])[0]
+        print(cyc_ch_indexes)
+        peaks_in_current_frame = peaks[peaks.frame == i]
+        images_in_current_cycle = raw_data[cyc_ch_indexes, :, :].compute()
+        curremt_peaks = images_in_current_cycle[
+            :,
+            np.array(peaks_in_current_frame.y_int),
+            np.array(peaks_in_current_frame.x_int),
+        ]
+        curremt_peaks = np.transpose(curremt_peaks, (1, 0))
+        print(curremt_peaks.shape)
+        peak_intensities.append(curremt_peaks)
+    print(np.array(peak_intensities).shape)
+    # formatted_img = np.transpose(da.array(peak_intensities), (2, 3, 1, 0))
+    print(formatted_img)
 
-    # rescale_factor = 10
-    # anchor_small = downsample(anchors.astype(np.float32), rescale_factor)
-    # zproj_small = downsample(zproj.astype(np.float32), rescale_factor)
-    # print(anchor_small.shape)
-    # print(zproj_small.shape)
+    # formatted_img = formatted_img.rechunk({0: -1, 1: -1, 2: 1, 3: 1})
 
-    # parameter_object = itk.ParameterObject.New()
-    # parameter_map_rigid = parameter_object.GetDefaultParameterMap("bspline")
-    # parameter_object.AddParameterMap(parameter_map_rigid)
+    # print(formatted_img)
 
-    # # Call registration function
-    # result_image_small, result_transform_parameters = itk.elastix_registration_method(
-    # anchor_small, zproj_small, parameter_object=parameter_object
+    # intensites = formatted_img.map_blocks(
+    # get_intensities, peaks, 1, dtype=np.uint16
     # )
 
-    # print(result_image_small.shape)
-    # stem = Path(args.decode_zarr).stem
-    # zarr.save("%s_registered.zarr" % stem, np.array(result_image_small))
+    # print(intensites.compute())
 
-    # with open('%s_registered.pickle' %stem, 'wb') as fp:
-    # pickle.dump(params, fp)
+    # np.save(
+    # f"{stem}_extracted_peak_intensities.npy",
+    # da.max(intensites, axis=0).compute().astype(np.int16),
+    # )
+    # peaks = peaks.compute()
+    # peaks.columns = map(str.capitalize, peaks.columns)
+    # peaks["Tile"] = 0
+    # peaks.to_csv(f"{stem}_peak_locs.csv", index=False)
 
-    # img = da.array(img)
-    # img = da.transpose(img, (1, 2, 0))
-    # img = img.rechunk((2000, 2000, 1)).astype(np.float32)
-    # print(img.shape)
-    # print(img)
 
-    # hat_enhenced = da.map_blocks(white_tophat, img,
-    # selem=np.expand_dims(disk(args.whitehat_disk_diam), -1),
-    # dtype=np.float32)
-    # # print(hat_enhenced)
-    # # denoised = da.map_overlap(
-    # # denoise_wavelet, hat_enhenced,
-    # # depth=(args.overlaps, args.overlaps, 0), trim=True,
-    # # boundary="none",
-    # # method='BayesShrink',
-    # # mode='soft',
-    # # multichannel=True).astype(np.uint16)
-    # # print(denoised.compute())
-    # hat_enhenced = da.transpose(hat_enhenced, (2, 0, 1))
-    # zarr.save("%s_preprocessed.zarr" %Path(zarr_img).stem,
-    # hat_enhenced.compute())
+def main(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from):
+    peaks = dd.read_csv(peaks, sep="\t")[
+        ["y_int", "x_int"]
+    ].compute()
 
-    # if len(anchor_ch_indexes) <= 1:
-    # # create fake anchor channel
-    # max_projs = []
-    # for i in dic_cycle_ch:
-    # if i > start_decode_from:
-    # max_projs.append(np.max(img[dic_cycle_ch[i]], axis=0))
-    # print(max_projs)
-    # denoised_max_projs =[proj.map_blocks(denoise_wavelet, method='BayesShrink', mode='soft') for proj in max_projs]
-    # print(denoised_max_projs)
-    # im_bayes = [job.compute() for job in denoised_max_projs]
-    # print(im_bayes)
-    # else:
-    # print(img[anchor_ch_indexes].shape)
+    with open(channel_info, "rb") as fp:
+        channel_info = pickle.load(fp)
+
+    raw_zarr = Path(raw_zarr)
+    assert raw_zarr.exists()
+    reader = Reader(parse_url(raw_zarr))
+    raw_data = list(reader())[0].data[0].squeeze()
+
+    # print(raw_data)
+    # print(channel_info)
+    R = channel_info["R"]
+    peak_intensities = []
+    for i in range(R):
+        cyc_ch_indexes = (i + coding_cyc_starts_from) * len(
+            channel_info["coding_chs"]
+        ) + np.where(channel_info["coding_chs"])[0]
+        images_in_current_cycle = raw_data[cyc_ch_indexes, :, :].compute()
+        # print(images_in_current_cycle)
+        curremt_peaks = images_in_current_cycle[
+            :,
+            np.array(peaks.y_int),
+            np.array(peaks.x_int),
+        ]
+        curremt_peaks = np.transpose(curremt_peaks, (1, 0))
+        peak_intensities.append(curremt_peaks)
+    formatted_peak_profiles = np.transpose(
+            da.array(peak_intensities), (1, 2, 0)
+            ).astype(np.int32)
+    # print(formatted_peak_profiles.shape)
+    np.save(f"{stem}_extracted_peak_intensities.npy",
+            formatted_peak_profiles, allow_pickle=True)
+    peaks.to_csv(f"{stem}_peak_locs.csv")
+
+
+
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("-zarr", type=str, required=True)
-    parser.add_argument("-anchors", type=argparse.FileType("r"), required=True)
-    parser.add_argument("-out", type=str, required=True)
-    parser.add_argument("-r", type=int, default=2)
-
-    args = parser.parse_args()
-
-    main(args)
+    fire.Fire(main)

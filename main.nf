@@ -5,7 +5,7 @@
 nextflow.enable.dsl=2
 
 params.ome_tif = 'path/to/ome.tiff'
-params.out_dir = "./test/"
+params.out_dir = "test/"
 params.rna_spot_size = 5
 params.anchor_ch_indexes = 4
 
@@ -26,8 +26,6 @@ params.max_n_worker = 25
 /*params.trackpy_percentile = 90*/
 /*params.trackpy_separation = 2*/
 
-/*ome_tif_ch = Channel.fromPath(params.ome_tif).*/
-    /*into{ome_tif_for_anchor_peak_calling; ome_tif_for_peak_intensity_extraction}*/
 
 /*
  * bf2raw: The bioformats2raw application converts the input image file to
@@ -83,9 +81,9 @@ process Enhance_spots {
     echo true
     cache "lenient"
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
     /*storeDir params.out_dir + "/anchor_spots"*/
     publishDir params.out_dir + "/anchor_spots", mode:"copy"
-    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
 
     input:
     tuple val(stem), path(zarr)
@@ -106,7 +104,6 @@ process Enhance_spots {
 process Deepblink_and_Track {
     echo true
     cache "lenient"
-    /*container "/home/ubuntu/sifs/deepblink-2021-07-22-caf58c80de23.sif"*/
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:deepblink"
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
     /*storeDir params.out_dir + "/anchor_spots"*/
@@ -120,16 +117,16 @@ process Deepblink_and_Track {
 
     script:
     """
-    python3 ${workflow.projectDir}/deepblink_wrap.py --zarr_in ${zarr}/0 --stem ${stem} --tpy_search_range 3
+    python3 ${workflow.projectDir}/py_scripts/deepblink_wrap.py --zarr_in ${zarr}/0 --stem ${stem} --tpy_search_range 3
     """
 }
 
 
 process Call_peaks_in_anchor {
     echo true
-    /*storeDir params.out_dir + "/anchor_spots"*/
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
+    /*storeDir params.out_dir + "/anchor_spots"*/
     publishDir params.out_dir + "/anchor_spots", mode:"copy"
 
     input:
@@ -162,7 +159,7 @@ process Process_peaks {
 
     script:
     """
-    /opt/conda/envs/rapids/bin/python ${workflow.projectDir}/process_tracks.py --tsv ${track_tsv} --stem ${stem}
+    /opt/conda/envs/rapids/bin/python ${workflow.projectDir}/py_scripts/process_tracks.py --tsv ${track_tsv} --stem ${stem}
     """
 }
 
@@ -183,7 +180,7 @@ process Extract_peak_intensities {
 
     script:
     """
-    python ${workflow.projectDir}/extract_peak_intensities.py --raw_zarr ${imgs}/0 --peaks ${peaks} --stem ${stem} --channel_info ${channel_info} --coding_cyc_starts_from 1
+    python ${workflow.projectDir}/py_scripts/extract_peak_intensities.py --raw_zarr ${imgs}/0 --peaks ${peaks} --stem ${stem} --channel_info ${channel_info} --coding_cyc_starts_from 1
     """
 }
 
@@ -210,7 +207,7 @@ process Decode_peaks {
 
     script:
     """
-    python ${workflow.projectDir}/decode.py --spot_profile ${spot_profile} --spot_loc ${spot_loc} --barcodes_01 ${barcodes_f} --gene_names ${gene_names_f} --channels_info ${channel_info_f} --stem ${stem}
+    python ${workflow.projectDir}/py_scripts/decode.py --spot_profile ${spot_profile} --spot_loc ${spot_loc} --barcodes_01 ${barcodes_f} --gene_names ${gene_names_f} --channels_info ${channel_info_f} --stem ${stem}
     """
 }
 
@@ -218,7 +215,7 @@ process Decode_peaks {
 process Do_Plots {
     echo true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
-    containerOptions " -v " + baseDir + ":/gmm_decoding/:ro"
+    containerOptions "-v ${workflow.projectDir}:${workflow.projectDir}:ro"
     publishDir params.out_dir + "plots", mode:"copy"
 
     when:
@@ -234,7 +231,7 @@ process Do_Plots {
 
     script:
     """
-    python /gmm_decoding/do_plots.py -decoded_df $decoded_df_f -decode_out_params $decode_out_parameters_f -channels_info ${channel_info_f}
+    python ${workflow.projectDir}/py_scripts/do_plots.py -decoded_df $decoded_df_f -decode_out_params $decode_out_parameters_f -channels_info ${channel_info_f}
     """
 }
 
