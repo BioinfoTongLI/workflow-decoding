@@ -38,7 +38,9 @@ class Helper(object):
         reader = Reader(parse_url(zarr_in))
         self.raw_data = list(reader())[0].data[0]
 
-    def enhance_spots(self, stem: str, diam: int, ch_info: str, anchor_ch_ind=None):
+    def enhance_spots(
+        self, stem: str, diam: int, ch_info: str, anchor_ch_ind: int = None
+    ):
         # from cucim.skimage.exposure import equalize_adapthist
         from skimage.exposure import equalize_adapthist, equalize_hist
         import dask.array as da
@@ -46,7 +48,7 @@ class Helper(object):
         import tifffile as tf
 
         client = Client(
-            n_workers=15,
+            n_workers=25,
             # processes=False,
             memory_limit="300GB",
         )

@@ -106,9 +106,7 @@ def main_multicycle(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from=
 
 
 def main(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from):
-    peaks = dd.read_csv(peaks, sep="\t")[
-        ["y_int", "x_int"]
-    ].compute()
+    peaks = dd.read_csv(peaks, sep="\t")[["y_int", "x_int"]].compute()
 
     with open(channel_info, "rb") as fp:
         channel_info = pickle.load(fp)
@@ -136,15 +134,15 @@ def main(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from):
         curremt_peaks = np.transpose(curremt_peaks, (1, 0))
         peak_intensities.append(curremt_peaks)
     formatted_peak_profiles = np.transpose(
-            da.array(peak_intensities), (1, 2, 0)
-            ).astype(np.int32)
+        da.array(peak_intensities), (1, 2, 0)
+    ).astype(np.int32)
     # print(formatted_peak_profiles.shape)
-    np.save(f"{stem}_extracted_peak_intensities.npy",
-            formatted_peak_profiles, allow_pickle=True)
+    np.save(
+        f"{stem}_extracted_peak_intensities.npy",
+        formatted_peak_profiles,
+        allow_pickle=True,
+    )
     peaks.to_csv(f"{stem}_peak_locs.csv")
-
-
-
 
 
 if __name__ == "__main__":

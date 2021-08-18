@@ -19,10 +19,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 def trackpy_locate(ch_name, img):
     peaks = tp.locate(
-                np.array(img), diameter=args.spot_diameter,
-                percentile=args.trackpy_percentile,
-                separation=args.peak_separation,
-        )
+        np.array(img),
+        diameter=args.spot_diameter,
+        percentile=args.trackpy_percentile,
+        separation=args.peak_separation,
+    )
     peaks["ch_name"] = ch_name
     peaks["frame"] = ch_name[2]
     return peaks
@@ -44,9 +45,9 @@ def main(args):
         print(v, processed_anchor.data_vars[v])
         executor = ThreadPoolExecutor(15)
         peak_calling_futures.append(
-                executor.submit(trackpy_locate, v, processed_anchor.data_vars[v])
-                # trackpy_locate(v, processed_anchor.data_vars[v])
-                )
+            executor.submit(trackpy_locate, v, processed_anchor.data_vars[v])
+            # trackpy_locate(v, processed_anchor.data_vars[v])
+        )
     # print(peak_calling_futures)
     peaks = [obj.result() for obj in peak_calling_futures]
     concat_peaks = pd.concat(peaks)

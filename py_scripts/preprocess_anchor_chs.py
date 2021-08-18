@@ -56,7 +56,7 @@ def main(args):
     print(imgs.dims, imgs.shape)
     print(imgs.get_image_dask_data("YX", T=0, Z=0, S=0, C=args.known_anchor_index))
     # processed_anchor = get_processed_anchor_ch(
-        # imgs[args.known_anchor_index], args.chunk_size, args.spot_diameter
+    # imgs[args.known_anchor_index], args.chunk_size, args.spot_diameter
     # )
 
     # # Save

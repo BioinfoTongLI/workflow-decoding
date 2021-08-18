@@ -25,9 +25,8 @@ import trackpy as tp
 def deepblink_on_large(img, model, stepsize=1000):
     # Tile image into 1000x1000 patches with steps of 1000 to avoid multiple detections of the same spots
     windows = skimage.util.view_as_windows(
-            img, window_shape=(1000, 1000),
-            step=stepsize
-            )
+        img, window_shape=(1000, 1000), step=stepsize
+    )
     preds = []
     for n_row, row in enumerate(windows):
         for n_col, col in enumerate(row):
@@ -35,13 +34,11 @@ def deepblink_on_large(img, model, stepsize=1000):
             raw_pred = db.inference.predict(col, model).T
             # Add position back in large image
             pred = np.array(
-                    [raw_pred[0] + (n_row * stepsize),
-                    raw_pred[1] + (n_col * stepsize)]
+                [raw_pred[0] + (n_row * stepsize), raw_pred[1] + (n_col * stepsize)]
             ).T
             preds.append(pred)
     coords = np.concatenate(preds)
     return coords
-
 
 
 def main(zarr_in, stem, tpy_search_range):
@@ -54,22 +51,22 @@ def main(zarr_in, stem, tpy_search_range):
     model = db.io.load_model("/vesicle.h5")
 
     coords = deepblink_on_large(
-            anchor_image.squeeze().max(axis=0).compute(),
-            model,
-            )
+        anchor_image.squeeze().max(axis=0).compute(),
+        model,
+    )
 
     df = pd.DataFrame(coords, columns=["y", "x"])
     df = df.assign(
-        x_int=lambda df: np.round(df.x).astype(np.uint64),
-        y_int=lambda df: np.round(df.y).astype(np.uint64),
+        x_int=lambda df: np.round(df.x).astype(np.uint32),
+        y_int=lambda df: np.round(df.y).astype(np.uint32),
     )
     df.to_csv(f"{stem}_max_projected_peaks.tsv", sep="\t")
     # all_coords = []
     # for i in range(anchor_image.squeeze().shape[0]):
-        # coords = deepblink_on_large(anchor_image.squeeze()[i])
-        # df = pd.DataFrame(coords, columns=["y", "x"])
-        # df["frame"] = i
-        # all_coords.append(df)
+    # coords = deepblink_on_large(anchor_image.squeeze()[i])
+    # df = pd.DataFrame(coords, columns=["y", "x"])
+    # df["frame"] = i
+    # all_coords.append(df)
     # combine = pd.concat(all_coords)
 
     # # Track peaks across cycles
