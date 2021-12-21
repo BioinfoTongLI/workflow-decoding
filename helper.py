@@ -98,6 +98,24 @@ class Helper(object):
         client.close()
         return self
 
+
+    def enchance_all(self, stem: str, diam: int, anchor_ch_ind: int = None):
+        chs_with_peaks = self.raw_data[0, [anchor_ch_ind], 0]
+        print(chs_with_peaks.shape)
+        hat_enhenced = chs_with_peaks.map_overlap(
+            white_tophat,
+            selem=np.expand_dims(disk(diam), 0),
+            depth=(0, 100, 100),
+            dtype=np.float16,
+        )
+        hat_enhenced = hat_enhenced.compute()
+        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced"), mode="w").store
+        group = zarr.group(store=store).create_group("0")
+
+        write_image(image=hat_enhenced, group=group, chunks=(2 ** 10, 2 ** 10))
+
+
+
     def call_peaks(
         self,
         diam: int,
@@ -107,14 +125,14 @@ class Helper(object):
         tpy_search_range: int,
     ):
         df = tp.batch(
-            self.raw_data.squeeze().compute(),
+                self.raw_data[0, :, 0].compute(),
             diam,
             separation=peak_separation,
             percentile=tp_percentile,
             minmass=50,
             engine="numba",
         )
-        # df.to_csv(f"{stem}_detected_peaks.tsv", sep="\t")
+        df.to_csv(f"{stem}_detected_peaks.tsv", sep="\t")
         t = tp.link(df, tpy_search_range, memory=0)
 
         tracks = tp.filtering.filter_stubs(t, 5)
