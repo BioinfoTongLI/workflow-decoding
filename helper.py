@@ -132,6 +132,8 @@ class Helper(object):
             minmass=50,
             engine="numba",
         )
+        df["x_int"] = df.x.astype(np.uint16)
+        df["y_int"] = df.y.astype(np.uint16)
         df.to_csv(f"{stem}_detected_peaks.tsv", sep="\t")
         t = tp.link(df, tpy_search_range, memory=0)
 
