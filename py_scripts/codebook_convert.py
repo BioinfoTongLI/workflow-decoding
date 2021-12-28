@@ -38,7 +38,7 @@ def get_channel_info(col_list):
             if ch_name == "DAPI":
                 ch_info[ch_name] = "nuclei"
             else:
-                ch_info[ch_name] = ch
+                ch_info[ch_name] = nucleotide_map[str(ch)]
             print(cyc, ch, ch_name, col)
     n_ch_set = set(n_chs)
     assert len(n_ch_set) == max(n_ch_set)
@@ -53,7 +53,12 @@ def main(csv_file):
     print(d.columns)
     ch_info = get_channel_info(d.columns)
     print(ch_info)
-    pd.Series(ch_info).T.to_csv("channel_info.csv")
+    df = pd.DataFrame(pd.Series(ch_info)).T
+    columns_order = ["nCycles", "nChannel", "DAPI"]
+    nucleotides = [col for col in df.columns.values if col not in columns_order]
+    ordered_cols = columns_order + nucleotides
+    df = df[ordered_cols]
+    df.to_csv("channel_info.csv", index=False)
     d["Channel"] = convert2AGCT(d.code)
     taglist = d[["gene", "Channel"]]
     taglist = taglist.rename(columns={"gene":"Gene"})
