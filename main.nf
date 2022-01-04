@@ -4,16 +4,16 @@
 
 nextflow.enable.dsl=2
 
-params.ome_tif = 'path/to/ome.tiff'
+params.ome_tif = '/lustre/scratch117/cellgen/team283/tl10/HZ_HLB/Nemo_63x/stitching_test_15_rotated.ome.tif'
 params.out_dir = "test/"
-params.rna_spot_size = 5
-params.anchor_ch_indexes = 4
+params.rna_spot_size = 7
+params.anchor_ch_indexes = 2
 
 params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/new_opt/gmm-input/"
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
 
-params.decode = true
+params.decode = false
 params.max_n_worker = 25
 
 // not used in this version
@@ -23,8 +23,9 @@ params.max_n_worker = 25
 /*params.anchor_available = 1*/
 
 /*params.known_anchor = "c01 Alexa 647"*/
-/*params.trackpy_percentile = 90*/
-/*params.trackpy_separation = 2*/
+params.trackpy_percentile = 90
+params.trackpy_separation = 2
+params.trackpy_search_range = 5
 
 
 /*
@@ -33,7 +34,7 @@ params.max_n_worker = 25
  */
 process bf2raw {
     echo true
-    container "gitlab-registry.internal.sanger.ac.uk/bayraktar-lab/image-convert:latest"
+    conda "-c ome bioformats2raw"
     storeDir params.out_dir + "/raws"
     /*publishDir params.out_dir, mode:"copy"*/
 
@@ -56,6 +57,9 @@ process Get_meatdata {
     cache "lenient"
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "-v ${workflow.projectDir}:${workflow.projectDir}"
+
+    when:
+    params.decode
 
     /*storeDir params.out_dir + "/decoding_metadata"*/
     publishDir params.out_dir + "/decoding_metadata", mode:"copy"
@@ -96,7 +100,8 @@ process Enhance_spots {
 
     script:
     """
-    python ${workflow.projectDir}/helper.py enhance_spots --diam ${params.rna_spot_size} --ch_info ${channel_info}  --zarr_in ${zarr}/0 --stem ${stem} --anchor_ch_ind ${anchor_ch_indexes}
+    #python ${workflow.projectDir}/helper.py enhance_spots --diam ${params.rna_spot_size} --ch_info ${channel_info}  --zarr_in ${zarr}/0 --stem ${stem} --anchor_ch_ind ${anchor_ch_indexes}
+    python ${workflow.projectDir}/helper.py enchance_all --diam ${params.rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem} --anchor_ch_ind ${anchor_ch_indexes}
     """
 }
 
@@ -133,11 +138,12 @@ process Call_peaks_in_anchor {
     tuple val(stem), file(anchor_zarr)
 
     output:
-    tuple val(stem), file("${stem}_tracked_peaks.tsv"), emit: peaks_from_anchor_chs
+    tuple val(stem), file("${stem}_detected_peaks.tsv"), emit: peaks_from_anchor_chs
+    tuple val(stem), file("${stem}_tracked_peaks.tsv"), emit: tracked_peaks_from_anchor_chs
 
     script:
     """
-    python ${workflow.projectDir}/helper.py call_peaks --zarr_in ${anchor_zarr}/0 --stem ${stem} --diam ${params.rna_spot_size} --tp_percentile ${params.trackpy_percentile} --peak_separation ${params.trackpy_separation} --tpy_search_range 5
+    python ${workflow.projectDir}/helper.py call_peaks --zarr_in ${anchor_zarr}/0 --stem ${stem} --diam ${params.rna_spot_size} --tp_percentile ${params.trackpy_percentile} --peak_separation ${params.trackpy_separation} --tpy_search_range ${params.trackpy_search_range}
     # serach range fixed to 5 as tp could not handle more depth
     """
 }
@@ -171,6 +177,9 @@ process Extract_peak_intensities {
     /*storeDir params.out_dir + "/peak_intensities"*/
     publishDir params.out_dir + "/peak_intensities", mode:"copy"
 
+    when:
+    params.decode
+
     input:
     tuple val(stem), file(peaks), file(imgs)
     file channel_info
@@ -190,7 +199,7 @@ process Decode_peaks {
     /*storeDir params.out_dir + "decoded"*/
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
-    publishDir params.out_dir + "decoded", mode:"copy"
+    publishDir params.out_dir + "/decoded", mode:"copy"
 
     when:
     params.decode
@@ -240,11 +249,11 @@ workflow {
     Get_meatdata(params.auxillary_file_dir, params.taglist_name, params.channel_info_name)
     bf2raw(params.ome_tif)
     Enhance_spots(bf2raw.out, params.anchor_ch_indexes, Get_meatdata.out.channel_infos)
-    Deepblink_and_Track(Enhance_spots.out.ch_with_peak_img)
-    /*Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img)*/
+    /*Deepblink_and_Track(Enhance_spots.out.ch_with_peak_img)*/
+    Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img)
     /*Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)*/
     Extract_peak_intensities(
-        Deepblink_and_Track.out.peaks_from_anchor_chs.join(bf2raw.out),
+        Call_peaks_in_anchor.out.peaks_from_anchor_chs.join(bf2raw.out),
         Get_meatdata.out.channel_infos
     )
     Decode_peaks(
