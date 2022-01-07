@@ -1,2 +1,2 @@
-nCycles,nChannel,DAPI,AF750,Cy5,Cy3,AF488
-6,5,nuclei,A,G,C,T
+nCycles,nChannel,DAPI,Cy5,AF488,Cy3,Atto425
+6,5,nuclei,G,C,T,A
