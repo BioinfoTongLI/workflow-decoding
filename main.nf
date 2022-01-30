@@ -57,12 +57,11 @@ process Get_meatdata {
     cache "lenient"
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "-v ${workflow.projectDir}:${workflow.projectDir}"
+    storeDir params.out_dir + "/decoding_metadata"
+    /*publishDir params.out_dir + "/decoding_metadata", mode:"copy"*/
 
     when:
     params.decode
-
-    /*storeDir params.out_dir + "/decoding_metadata"*/
-    publishDir params.out_dir + "/decoding_metadata", mode:"copy"
 
     input:
     path gmm_input_dir
@@ -86,8 +85,8 @@ process Enhance_spots {
     cache "lenient"
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
-    /*storeDir params.out_dir + "/anchor_spots"*/
-    publishDir params.out_dir + "/anchor_spots", mode:"copy"
+    storeDir params.out_dir + "/anchor_spots"
+    /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
     input:
     tuple val(stem), path(zarr)
@@ -101,7 +100,7 @@ process Enhance_spots {
     script:
     """
     #python ${workflow.projectDir}/helper.py enhance_spots --diam ${params.rna_spot_size} --ch_info ${channel_info}  --zarr_in ${zarr}/0 --stem ${stem} --anchor_ch_ind ${anchor_ch_indexes}
-    python ${workflow.projectDir}/helper.py enchance_all --diam ${params.rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem} --anchor_ch_ind ${anchor_ch_indexes}
+    python ${workflow.projectDir}/helper.py enchance_all --diam ${params.rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem}
     """
 }
 
@@ -131,19 +130,20 @@ process Call_peaks_in_anchor {
     echo true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
-    /*storeDir params.out_dir + "/anchor_spots"*/
-    publishDir params.out_dir + "/anchor_spots", mode:"copy"
+    storeDir params.out_dir + "/anchor_spots"
+    /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
     input:
     tuple val(stem), file(anchor_zarr)
+    val(anchor_ch_index)
 
     output:
     tuple val(stem), file("${stem}_detected_peaks.tsv"), emit: peaks_from_anchor_chs
-    tuple val(stem), file("${stem}_tracked_peaks.tsv"), emit: tracked_peaks_from_anchor_chs
+    /*tuple val(stem), file("${stem}_tracked_peaks.tsv"), emit: tracked_peaks_from_anchor_chs*/
 
     script:
     """
-    python ${workflow.projectDir}/helper.py call_peaks --zarr_in ${anchor_zarr}/0 --stem ${stem} --diam ${params.rna_spot_size} --tp_percentile ${params.trackpy_percentile} --peak_separation ${params.trackpy_separation} --tpy_search_range ${params.trackpy_search_range}
+    python ${workflow.projectDir}/helper.py call_peaks --zarr_in ${anchor_zarr}/0 --stem ${stem} --diam ${params.rna_spot_size} --tp_percentile ${params.trackpy_percentile} --peak_separation ${params.trackpy_separation} --tpy_search_range ${params.trackpy_search_range} --anchor_ch_index ${anchor_ch_index}
     # serach range fixed to 5 as tp could not handle more depth
     """
 }
@@ -221,26 +221,27 @@ process Decode_peaks {
 }
 
 
-process Do_Plots {
+process Heatmap_plot {
     echo true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "-v ${workflow.projectDir}:${workflow.projectDir}:ro"
-    publishDir params.out_dir + "plots", mode:"copy"
+    publishDir params.out_dir + "/plots", mode:"copy"
 
     when:
     params.decode
 
     input:
-    file decoded_df_f from decoded_df
-    file decode_out_parameters_f from decode_out_parameters
-    file channel_info_f from channel_info_for_plot
+    path(decoded_df)
+    /*file decode_out_parameters_f from decode_out_parameters*/
+    /*file channel_info_f from channel_info_for_plot*/
 
     output:
-    file "*.png"
+    path("*.png")
 
     script:
     """
-    python ${workflow.projectDir}/py_scripts/do_plots.py -decoded_df $decoded_df_f -decode_out_params $decode_out_parameters_f -channels_info ${channel_info_f}
+    python ${workflow.projectDir}/py_scripts/do_plots.py --decoded_df $decoded_df
+    #-decode_out_params decode_out_parameters_f -channels_info {channel_info_f}
     """
 }
 
@@ -250,10 +251,10 @@ workflow {
     bf2raw(params.ome_tif)
     Enhance_spots(bf2raw.out, params.anchor_ch_indexes, Get_meatdata.out.channel_infos)
     /*Deepblink_and_Track(Enhance_spots.out.ch_with_peak_img)*/
-    Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img)
+    Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img, params.anchor_ch_indexes)
     /*Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)*/
     Extract_peak_intensities(
-        Call_peaks_in_anchor.out.peaks_from_anchor_chs.join(bf2raw.out),
+        Call_peaks_in_anchor.out.peaks_from_anchor_chs.join(Enhance_spots.out.ch_with_peak_img),
         Get_meatdata.out.channel_infos
     )
     Decode_peaks(
@@ -262,4 +263,5 @@ workflow {
         Get_meatdata.out.gene_names,
         Get_meatdata.out.channel_infos
     )
+    Heatmap_plot(Decode_peaks.out[0])
 }

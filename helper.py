@@ -99,8 +99,8 @@ class Helper(object):
         return self
 
 
-    def enchance_all(self, stem: str, diam: int, anchor_ch_ind: int = None):
-        chs_with_peaks = self.raw_data[0, [anchor_ch_ind], 0]
+    def enchance_all(self, stem: str, diam: int):
+        chs_with_peaks = self.raw_data[0, :, 0]
         print(chs_with_peaks.shape)
         hat_enhenced = chs_with_peaks.map_overlap(
             white_tophat,
@@ -123,9 +123,11 @@ class Helper(object):
         tp_percentile: int,
         peak_separation: int,
         tpy_search_range: int,
+        anchor_ch_index: int
     ):
-        df = tp.batch(
-                self.raw_data[0, :, 0].compute(),
+        print(self.raw_data[0, 0, anchor_ch_index])
+        df = tp.locate(
+                self.raw_data[0, 0, anchor_ch_index].compute(),
             diam,
             separation=peak_separation,
             percentile=tp_percentile,
@@ -135,14 +137,14 @@ class Helper(object):
         df["x_int"] = df.x.astype(np.uint16)
         df["y_int"] = df.y.astype(np.uint16)
         df.to_csv(f"{stem}_detected_peaks.tsv", sep="\t")
-        t = tp.link(df, tpy_search_range, memory=0)
+        # t = tp.link(df, tpy_search_range, memory=0)
 
-        tracks = tp.filtering.filter_stubs(t, 5)
-        tracks = tracks.assign(
-            x_int=lambda df: np.round(df.x).astype(np.uint64),
-            y_int=lambda df: np.round(df.y).astype(np.uint64),
-        )
-        tracks.to_csv(f"{stem}_tracked_peaks.tsv", sep="\t")
+        # tracks = tp.filtering.filter_stubs(t, 5)
+        # tracks = tracks.assign(
+            # x_int=lambda df: np.round(df.x).astype(np.uint64),
+            # y_int=lambda df: np.round(df.y).astype(np.uint64),
+        # )
+        # tracks.to_csv(f"{stem}_tracked_peaks.tsv", sep="\t")
 
 
 if __name__ == "__main__":
