@@ -16,20 +16,22 @@ from ome_zarr.writer import write_image
 from ome_zarr.scale import Scaler
 from ome_zarr.io import parse_url
 
-# from cucim.skimage.morphology import white_tophat, disk
-from skimage.morphology import white_tophat, disk
+from cucim.skimage.morphology import white_tophat, disk
+import cupy as cp
+
+# from skimage.morphology import white_tophat, disk
 import trackpy as tp
 import numpy as np
 import pathlib
 import zarr
 import pickle
+import dask.array as da
 
 
 def white_tophat_cp(chunk, **kwargs):
-    import cupy as cp
-
-    return white_tophat(cp.asarray(chunk), **kwargs)
-
+    cp_chunk = cp.array(chunk)
+    # print(cp_chunk.shape)
+    return white_tophat(cp_chunk, **kwargs).get()
 
 class Helper(object):
     def __init__(self, zarr_in: str):
@@ -43,16 +45,7 @@ class Helper(object):
     ):
         # from cucim.skimage.exposure import equalize_adapthist
         from skimage.exposure import equalize_adapthist, equalize_hist
-        import dask.array as da
-        from dask.distributed import Client, LocalCluster
         import tifffile as tf
-
-        client = Client(
-            n_workers=25,
-            # processes=False,
-            memory_limit="300GB",
-        )
-        print(client)
 
         with open(ch_info, "rb") as fp:
             channels_info = pickle.load(fp)
@@ -95,25 +88,31 @@ class Helper(object):
 
         # tf.imwrite(f"{stem}_spot_enhanced.tif", hat_enhenced[0].squeeze(), imagej=True, metadata={'axes': 'YX'})
 
-        client.close()
         return self
 
 
     def enchance_all(self, stem: str, diam: int):
         chs_with_peaks = self.raw_data[0, :, 0]
-        print(chs_with_peaks.shape)
+        print(chs_with_peaks)
+        # enhanced_chs = []
+        # for ch in chs_with_peaks:
+            # enhanced_chs.append(white_tophat(cp.array(ch), footprint=disk(diam)).get())
+        # enhanced_chs = np.array(enhanced_chs)
+        # print(enhanced_chs)
+        chs_with_peaks = chs_with_peaks.rechunk({0:1, 1:-1, 2:-1})
         hat_enhenced = chs_with_peaks.map_overlap(
-            white_tophat,
-            selem=np.expand_dims(disk(diam), 0),
-            depth=(0, 100, 100),
+            white_tophat_cp,
+            # meta=cp.array(()),
+            # depth=(0, diam * 2, diam * 2),
+            depth=(0, 0, 0),
+            footprint=cp.expand_dims(disk(diam), 0),
             dtype=np.float16,
-        )
-        hat_enhenced = hat_enhenced.compute()
+        ).compute()
         store = parse_url(pathlib.Path(f"{stem}_spot_enhanced"), mode="w").store
         group = zarr.group(store=store).create_group("0")
 
-        write_image(image=hat_enhenced, group=group, chunks=(2 ** 10, 2 ** 10))
-
+        write_image(image=hat_enhenced, group=group, axes="cyx", chunks=(1, 2 ** 10, 2 ** 10))
+        # write_image(image=enhanced_chs, group=group, axes="cyx", chunks=(1, 2 ** 10, 2 ** 10))
 
 
     def call_peaks(
@@ -125,9 +124,9 @@ class Helper(object):
         tpy_search_range: int,
         anchor_ch_index: int
     ):
-        print(self.raw_data[0, 0, anchor_ch_index])
+        print(self.raw_data[anchor_ch_index])
         df = tp.locate(
-                self.raw_data[0, 0, anchor_ch_index].compute(),
+                self.raw_data[anchor_ch_index].compute(),
             diam,
             separation=peak_separation,
             percentile=tp_percentile,
@@ -148,4 +147,12 @@ class Helper(object):
 
 
 if __name__ == "__main__":
+    from dask.distributed import Client, LocalCluster
+    client = Client(
+        # n_workers=3,
+        processes=True,
+        # memory_limit="20GB",
+    )
+    print(client)
     fire.Fire(Helper)
+    client.close()

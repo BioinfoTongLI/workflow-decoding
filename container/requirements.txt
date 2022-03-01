@@ -1,3 +1,4 @@
+pip
 setuptools
 pdbpp
 jupyter
@@ -12,3 +13,13 @@ trackpy
 tifffile
 scikit-image
 starfish
+
+imagecodecs
+cucim
+cupy-cuda110
+dask-image
+zarr
+aicsimageio
+fire
+ome-zarr
+numba

@@ -15,8 +15,9 @@ import re
 import numpy as np
 
 
-channel_map = {"Cy5":"G", "AF488":"C", "Cy3":"T", "AF750":"A"}
-nucleotide_map = {"1":"A", "2":"G", "3":"C", "4":"T"}
+channel_map = {"AF750": "C", "Cy5": "G", "Cy3": "T", "AF488": "A"}
+nucleotide_map = {"1": "C", "2": "G", "3": "T", "4": "A"}
+
 
 def convert2AGCT(codelist):
     AGCT_codes = []
@@ -50,8 +51,9 @@ def get_channel_info(col_list):
     ch_info["nChannel"] = max(n_ch_set)
     return ch_info
 
+
 def main(csv_file):
-    d = pd.read_csv(csv_file)
+    d = pd.read_excel(csv_file)
     code_sizes = [len(str(c)) for c in d.code]
     n_cycle = np.unique(code_sizes)
     assert len(n_cycle) == 1
@@ -69,7 +71,7 @@ def main(csv_file):
         gene = d.loc[gene_ind]
         str_l = []
         for i, ind in enumerate(str(gene.code)):
-            ch_name = channel_dict[(str(i+1), ind)]
+            ch_name = channel_dict[(str(i + 1), ind)]
             col_name = f"cycle{i+1}_channel{ind}_{ch_name}"
             assert gene[col_name] == 1
             str_l.append(ch_name)
@@ -105,7 +107,7 @@ def main(csv_file):
     # d["Channel"] = convert2AGCT(d.code)
 
     taglist = d[["gene", "nucleotide_codes"]]
-    taglist = taglist.rename(columns={"gene":"Gene", "nucleotide_codes":"Channel"})
+    taglist = taglist.rename(columns={"gene": "Gene", "nucleotide_codes": "Channel"})
     print(taglist)
     pd.DataFrame(taglist).to_csv("taglist.csv", index=False)
 
