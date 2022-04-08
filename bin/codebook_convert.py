@@ -53,7 +53,11 @@ def get_channel_info(col_list):
 
 
 def main(csv_file):
-    d = pd.read_excel(csv_file)
+    if csv_file.endswith(".xlsx"):
+        d = pd.read_excel(csv_file)
+    else:
+        d = pd.read_csv(csv_file)
+    print(d)
     code_sizes = [len(str(c)) for c in d.code]
     n_cycle = np.unique(code_sizes)
     assert len(n_cycle) == 1
