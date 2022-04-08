@@ -3,6 +3,7 @@
 // Copyright (C) 2020 Tong LI <tongli.bioinfo@protonmail.com>
 
 nextflow.enable.dsl=2
+
 // minimal parameter set
 params.ome_tif = '/lustre/scratch117/cellgen/team283/tl10/HZ_HLB/Nemo_63x/stitching_test_15_rotated.ome.tif'
 params.out_dir = "test/"
@@ -13,9 +14,9 @@ params.anchor_ch_indexes = 2
 params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/new_opt/gmm-input/"
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
+params.codebook = "./example_data/codebook_long2short (2).csv"
 
-// if avaiable peaks from external
-params.anchor_peaks_tsv = "/nfs/team283_imaging/HZ_HLB/playground_Tong/HZ_HLB_hindlimb_20220210_63x/Synquant_RoiSet.tsv"
+params.anchor_peaks_tsv = "./Synquant_RoiSet.tsv" // if avaiable peaks were detected by Synquant
 
 params.max_n_worker = 25
 
@@ -56,6 +57,27 @@ process bf2raw {
 }
 
 
+process Codebook_conversion {
+    echo true
+    cache "lenient"
+    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    storeDir params.out_dir + "/decoding_metadata"
+
+    input:
+    file(codebook)
+
+    output:
+    path "taglist.csv", emit: taglist_name
+    path "channel_info.csv", emit: channel_info_name
+    /*path "channel_info.pickle", emit: channel_infos*/
+
+    script:
+    """
+    codebook_convert.py -csv_file ${codebook}
+    """
+}
+
+
 process Get_meatdata {
     echo true
     cache "lenient"
@@ -64,9 +86,8 @@ process Get_meatdata {
     /*publishDir params.out_dir + "/decoding_metadata", mode:"copy"*/
 
     input:
-    path gmm_input_dir
-    val taglist_name
-    val channel_info_name
+    path(taglist_name)
+    path(channel_info_name)
 
     output:
     path "barcodes_01.npy", emit: barcodes
@@ -75,7 +96,7 @@ process Get_meatdata {
 
     script:
     """
-    py_scripts/get_metadata.py -auxillary_file_dir ${gmm_input_dir}/  -taglist_name ${taglist_name} -channel_info_name ${channel_info_name}
+    get_metadata.py -auxillary_file_dir ./  -taglist_name ${taglist_name} -channel_info_name ${channel_info_name}
     """
 }
 
@@ -95,11 +116,10 @@ process Enhance_spots {
 
     output:
     tuple val(stem), path("${stem}_spot_enhanced"), emit:ch_with_peak_img
-    /*tuple val(stem), path("${stem}_spot_enhanced.tif"), emit:ch_with_peak_tif*/
 
     script:
     """
-    helper.py enchance_all --diam ${params.rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem}
+    helper.py enhance_all --diam ${params.rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem}
     """
 }
 
@@ -137,12 +157,12 @@ process Call_peaks_in_anchor {
     val(anchor_ch_index)
 
     output:
-    tuple val(stem), file("${stem}_detected_peaks.tsv"), emit: peaks_from_anchor_chs
+    path("${stem}_detected_peaks.tsv"), emit: peaks_from_anchor_chs
     /*tuple val(stem), file("${stem}_tracked_peaks.tsv"), emit: tracked_peaks_from_anchor_chs*/
 
     script:
     """
-    helper.py call_peaks --zarr_in ${anchor_zarr}/0 --stem ${stem} --diam ${params.rna_spot_size} --tp_percentile ${params.trackpy_percentile} --peak_separation ${params.trackpy_separation} --tpy_search_range ${params.trackpy_search_range} --anchor_ch_index ${anchor_ch_index}
+    helper.py call_peaks --zarr_in ${anchor_zarr}/0/${anchor_ch_index} --stem ${stem} --diam ${params.rna_spot_size} --tp_percentile ${params.trackpy_percentile} --peak_separation ${params.trackpy_separation} --tpy_search_range ${params.trackpy_search_range} --anchor_ch_index ${anchor_ch_index}
     # serach range fixed to 5 as tp could not handle more depth
     """
 }
@@ -258,15 +278,16 @@ process Heatmap_plot {
 
 
 workflow {
-    Get_meatdata(params.auxillary_file_dir, params.taglist_name, params.channel_info_name)
+    Codebook_conversion(Channel.fromPath(params.codebook))
+    Get_meatdata(Codebook_conversion.out.taglist_name, Codebook_conversion.out.channel_info_name)
     bf2raw(params.ome_tif)
     Enhance_spots(bf2raw.out, params.anchor_ch_indexes, Get_meatdata.out.channel_infos)
-    /*[>Deepblink_and_Track(Enhance_spots.out.ch_with_peak_img)<]*/
     if (params.anchor_peaks_tsv != "") {
         peaks = Channel.fromPath(params.anchor_peaks_tsv)
     } else {
-        peaks = Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img, params.anchor_ch_indexes).out.peaks_from_anchor_chs
-        /*[>Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)<]*/
+        Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img, params.anchor_ch_indexes)
+        peaks = Call_peaks_in_anchor.out.peaks_from_anchor_chs
+        /*Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)*/
     }
     Extract_peak_intensities(
         peaks, Enhance_spots.out.ch_with_peak_img,

@@ -29,9 +29,7 @@ import dask.array as da
 
 
 def white_tophat_cp(chunk, **kwargs):
-    cp_chunk = cp.array(chunk)
-    # print(cp_chunk.shape)
-    return white_tophat(cp_chunk, **kwargs).get()
+    return white_tophat(cp.array(chunk), **kwargs).get()
 
 class Helper(object):
     def __init__(self, zarr_in: str):
@@ -77,7 +75,7 @@ class Helper(object):
         hat_enhenced = chs_with_peaks.map_overlap(
             white_tophat,
             selem=np.expand_dims(disk(diam), 0),
-            depth=(0, 100, 100),
+            depth=(0, 20, 20),
             dtype=np.float16,
         )
         hat_enhenced = hat_enhenced.compute()
@@ -91,27 +89,53 @@ class Helper(object):
         return self
 
 
-    def enchance_all(self, stem: str, diam: int):
+    def enhance_all(self, stem: str, diam: int):
         chs_with_peaks = self.raw_data[0, :, 0]
-        print(chs_with_peaks)
         # enhanced_chs = []
         # for ch in chs_with_peaks:
             # enhanced_chs.append(white_tophat(cp.array(ch), footprint=disk(diam)).get())
         # enhanced_chs = np.array(enhanced_chs)
         # print(enhanced_chs)
-        chs_with_peaks = chs_with_peaks.rechunk({0:1, 1:-1, 2:-1})
-        hat_enhenced = chs_with_peaks.map_overlap(
-            white_tophat_cp,
-            # meta=cp.array(()),
-            # depth=(0, diam * 2, diam * 2),
-            depth=(0, 0, 0),
-            footprint=cp.expand_dims(disk(diam), 0),
-            dtype=np.float16,
-        ).compute()
-        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced"), mode="w").store
-        group = zarr.group(store=store).create_group("0")
+        # chs_with_peaks = chs_with_peaks.rechunk({0:1, 1:-1, 2:-1})
+        # chs_with_peaks = chs_with_peaks.rechunk({0:1, 1:"auto", 2:"auto"})
+        print(chs_with_peaks)
+        # footprint = cp.expand_dims(disk(diam//2), 0)
+        footprint = disk(diam//2)
 
-        write_image(image=hat_enhenced, group=group, axes="cyx", chunks=(1, 2 ** 10, 2 ** 10))
+        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced"), mode="w").store
+
+        for i in range(chs_with_peaks.shape[0]):
+            ch = chs_with_peaks[i].rechunk({0:"auto", 1:"auto"})
+            # hat_enhenced = white_tophat(cp.array(chs_with_peaks[i]), footprint=footprint).get()
+            hat_enhenced = ch.map_overlap(
+                white_tophat_cp,
+                depth=(diam * 3, diam * 3),
+                footprint=footprint,
+                dtype=np.float16,
+            )
+
+            group = zarr.group(store=store).create_group(f"0/{i}")
+            write_image(image=hat_enhenced.compute(), group=group, axes="yx")
+
+            del hat_enhenced
+            cp._default_memory_pool.free_all_blocks()
+
+        # print(footprint)
+        # hat_enhenced = chs_with_peaks.map_overlap(
+            # white_tophat_cp,
+            # # white_tophat,
+            # # meta=cp.array(()),
+            # depth=(0, diam * 3, diam * 3),
+            # footprint=footprint,
+            # # selem=np.expand_dims(disk(diam), 0),
+            # dtype=np.float16,
+        # )
+
+        # store = parse_url(pathlib.Path(f"{stem}_spot_enhanced"), mode="w").store
+        # group = zarr.group(store=store).create_group("0")
+
+        # write_image(image=hat_enhenced.compute(), group=group, axes="cyx")
+
         # write_image(image=enhanced_chs, group=group, axes="cyx", chunks=(1, 2 ** 10, 2 ** 10))
 
 
@@ -124,17 +148,18 @@ class Helper(object):
         tpy_search_range: int,
         anchor_ch_index: int
     ):
-        print(self.raw_data[anchor_ch_index])
+        print(self.raw_data)
         df = tp.locate(
-                self.raw_data[anchor_ch_index].compute(),
+                self.raw_data.compute(),
             diam,
             separation=peak_separation,
             percentile=tp_percentile,
             minmass=50,
             engine="numba",
         )
-        df["x_int"] = df.x.astype(np.uint16)
-        df["y_int"] = df.y.astype(np.uint16)
+        print(df.y.max(), df.x.max())
+        df["x_int"] = df.x.astype(np.uint32)
+        df["y_int"] = df.y.astype(np.uint32)
         df.to_csv(f"{stem}_detected_peaks.tsv", sep="\t")
         # t = tp.link(df, tpy_search_range, memory=0)
 
@@ -147,12 +172,12 @@ class Helper(object):
 
 
 if __name__ == "__main__":
-    from dask.distributed import Client, LocalCluster
-    client = Client(
-        # n_workers=3,
-        processes=True,
-        # memory_limit="20GB",
-    )
-    print(client)
+    # from dask.distributed import Client, LocalCluster
+    # client = Client(
+        # # n_workers=10,
+        # # processes=False,
+        # # memory_limit="20GB",
+    # )
+    # print(client)
     fire.Fire(Helper)
-    client.close()
+    # client.close()

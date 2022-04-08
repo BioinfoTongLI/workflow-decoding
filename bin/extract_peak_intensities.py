@@ -105,18 +105,26 @@ def main_multicycle(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from=
     # peaks.to_csv(f"{stem}_peak_locs.csv", index=False)
 
 
-def main(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from, peak_radius=1):
+def main(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from, peak_radius=1,
+        n_ch=35):
     peak_sur_coord = np.arange(-peak_radius, peak_radius + 1)
     xx, yy = np.meshgrid(peak_sur_coord, peak_sur_coord)
     dXYpair = zip(xx.reshape(-1), yy.reshape(-1))
 
     peaks = dd.read_csv(peaks, sep="\t")[["y_int", "x_int"]].compute()
 
-    raw_zarr = Path(raw_zarr)
-    assert raw_zarr.exists()
-    reader = Reader(parse_url(raw_zarr))
-    raw_data = list(reader())[0].data[0].squeeze()
-    img_Y, img_X = raw_data.shape[-2:]
+    raw_data = []
+    for i in range(n_ch):
+        tmp_zarr = Path(raw_zarr + "/" + str(i))
+        assert tmp_zarr.exists()
+        reader = Reader(parse_url(tmp_zarr))
+        # print(list(reader())[0].data[0])
+        raw_data.append(list(reader())[0].data[0])
+    raw_data = da.array(raw_data)
+    print(raw_data)
+    # raw_data = list(reader())[0].data[0].squeeze()
+    # img_Y, img_X = raw_data.shape[-2:]
+    img_Y, img_X = raw_data[0].shape
     print(img_Y, img_X)
 
     Xs, Ys = [], []
