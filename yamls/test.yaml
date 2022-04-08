@@ -1,7 +1,0 @@
-ome_tif  :
-  - "/nfs/team283_imaging/0HarmonyStitched/JSP_HSS/playground_Jun/OB10037_FF_Brain_CARTANA_N1234F_Cycles0123456_x20/feature_based_reg_DAPI/opt_flow_reg_DAPI/out_opt_flow_registered.tif"
-anchor_ch_indexes     : "4 9 14 19 24 29 34"
-max_fork : 20
-out_dir   : "./test"
-sif_dir  : "/home/ubuntu/sifs/"
-format  : '--zarr'
