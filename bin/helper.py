@@ -79,7 +79,7 @@ class Helper(object):
             dtype=np.float16,
         )
         hat_enhenced = hat_enhenced.compute()
-        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced"), mode="w").store
+        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced_diam_{diam}"), mode="w").store
         group = zarr.group(store=store).create_group("0")
 
         write_image(image=hat_enhenced, group=group, chunks=(2 ** 10, 2 ** 10))
@@ -102,7 +102,7 @@ class Helper(object):
         # footprint = cp.expand_dims(disk(diam//2), 0)
         footprint = disk(diam//2)
 
-        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced"), mode="w").store
+        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced_diam_{diam}"), mode="w").store
 
         for i in range(chs_with_peaks.shape[0]):
             ch = chs_with_peaks[i].rechunk({0:"auto", 1:"auto"})
@@ -160,7 +160,7 @@ class Helper(object):
         print(df.y.max(), df.x.max())
         df["x_int"] = df.x.astype(np.uint32)
         df["y_int"] = df.y.astype(np.uint32)
-        df.to_csv(f"{stem}_detected_peaks.tsv", sep="\t")
+        df.to_csv(f"{stem}_detected_peaks_diam_{diam}_percentile_{tp_percentile}_sep_{peak_separation}_search_range_{tpy_search_range}.tsv", sep="\t", index=False)
         # t = tp.link(df, tpy_search_range, memory=0)
 
         # tracks = tp.filtering.filter_stubs(t, 5)

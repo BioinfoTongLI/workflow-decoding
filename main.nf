@@ -5,41 +5,39 @@
 nextflow.enable.dsl=2
 
 // minimal parameter set
-params.ome_tif = '/lustre/scratch117/cellgen/team283/tl10/HZ_HLB/Nemo_63x/stitching_test_15_rotated.ome.tif'
-params.out_dir = "test/"
-params.rna_spot_size = 7
+params.ome_tif = ''
+params.out_dir = ''
+params.rna_spot_size = [5, 7]
 params.anchor_ch_indexes = 2
 
 // needed when decoding
-params.auxillary_file_dir = "/nfs/team283_imaging/NT_ISS/playground_Tong/KR0018/new_opt/gmm-input/"
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
-params.codebook = "./example_data/codebook_long2short (2).csv"
+params.codebook = ""
 
-params.anchor_peaks_tsv = "./Synquant_RoiSet.tsv" // if avaiable peaks were detected by Synquant
+params.anchor_peaks_tsv = "" // if avaiable peaks were detected by Synquant
 
-params.max_n_worker = 25
+params.max_n_worker = 28
+
+params.trackpy_percentile = [85, 90]
+params.trackpy_separation = 2
+params.trackpy_search_range = 5
 
 
 // not used in this version
-
 /*params.tile_name : "N1234F_tile_names.csv"*/
 /*params.coding_ch_starts_from = 0*/
 /*params.anchor_available = 1*/
 
 /*params.known_anchor = "c01 Alexa 647"*/
-params.trackpy_percentile = 90
-params.trackpy_separation = 2
-params.trackpy_search_range = 5
-
 
 /*
  * bf2raw: The bioformats2raw application converts the input image file to
  * an intermediate directory of tiles in the output directory.
  */
 process bf2raw {
-    echo true
-    conda "-c ome bioformats2raw"
+    debug true
+    container "openmicroscopy/bioformats2raw:0.4.0"
     storeDir params.out_dir + "/raws"
     /*publishDir params.out_dir, mode:"copy"*/
 
@@ -52,7 +50,7 @@ process bf2raw {
     script:
     stem = img.baseName
     """
-    bioformats2raw --max_workers ${params.max_n_worker} --resolutions 7 --no-hcs $img "${stem}"
+    /opt/bioformats2raw/bin/bioformats2raw --max_workers ${params.max_n_worker} --no-hcs $img "${stem}"
     """
 }
 
@@ -102,24 +100,24 @@ process Get_meatdata {
 
 
 process Enhance_spots {
-    echo true
+    debug true
     cache "lenient"
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all"
-    storeDir params.out_dir + "/anchor_spots"
+    storeDir params.out_dir + "/enhanced_anchor_channels"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
     input:
     tuple val(stem), path(zarr)
     val anchor_ch_indexes
-    path channel_info
+    each rna_spot_size
 
     output:
-    tuple val(stem), path("${stem}_spot_enhanced"), emit:ch_with_peak_img
+    tuple val(rna_spot_size), val(stem), path("${stem}_spot_enhanced_diam_${rna_spot_size}"), emit:ch_with_peak_img
 
     script:
     """
-    helper.py enhance_all --diam ${params.rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem}
+    helper.py enhance_all --diam ${rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem}
     """
 }
 
@@ -152,18 +150,22 @@ process Call_peaks_in_anchor {
     storeDir params.out_dir + "/anchor_spots"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
+    maxForks 1
+
     input:
-    tuple val(stem), file(anchor_zarr)
+    tuple val(rna_spot_size), val(stem), file(anchor_zarr)
     val(anchor_ch_index)
+    each percentile
+    each separation
+    each search_range
 
     output:
-    path("${stem}_detected_peaks.tsv"), emit: peaks_from_anchor_chs
+    tuple val(rna_spot_size), path("${stem}_detected_peaks_diam_${rna_spot_size}_percentile_${percentile}_sep_${separation}_search_range_${search_range}.tsv"), emit: peaks_from_anchor_chs
     /*tuple val(stem), file("${stem}_tracked_peaks.tsv"), emit: tracked_peaks_from_anchor_chs*/
 
     script:
     """
-    helper.py call_peaks --zarr_in ${anchor_zarr}/0/${anchor_ch_index} --stem ${stem} --diam ${params.rna_spot_size} --tp_percentile ${params.trackpy_percentile} --peak_separation ${params.trackpy_separation} --tpy_search_range ${params.trackpy_search_range} --anchor_ch_index ${anchor_ch_index}
-    # serach range fixed to 5 as tp could not handle more depth
+    helper.py call_peaks --zarr_in ${anchor_zarr}/0/${anchor_ch_index} --stem ${stem} --diam ${rna_spot_size} --tp_percentile ${percentile} --peak_separation ${separation} --tpy_search_range ${search_range} --anchor_ch_index ${anchor_ch_index}
     """
 }
 
@@ -193,21 +195,23 @@ process Extract_peak_intensities {
     echo true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all"
-    storeDir params.out_dir + "/peak_intensities"
-    /*publishDir params.out_dir + "/peak_intensities", mode:"copy"*/
+    /*storeDir params.out_dir + "/peak_intensities"*/
+    publishDir params.out_dir + "/peak_intensities", mode:"copy"
 
     input:
-    path(peaks)
-    /*tuple val(stem), file(peaks), file(imgs)*/
-    tuple val(stem), file(imgs)
-    file channel_info
+    tuple val(rna_spot_size), path(peaks), val(stem), path(imgs), path(channel_info)
 
     output:
-    tuple val(stem), file("${stem}_extracted_peak_intensities*"), file("${stem}_peak_locs.csv"), emit: peaks_for_preprocessing
+    tuple val(new_stem), file("${new_stem}_extracted_peak_intensities.npy"), file("${new_stem}_peak_locs.csv"), emit: peaks_for_preprocessing
 
     script:
+    new_stem = peaks.baseName
     """
-    extract_peak_intensities.py --raw_zarr ${imgs}/0 --peaks ${peaks} --stem ${stem} --channel_info ${channel_info} --coding_cyc_starts_from 1
+    extract_peak_intensities.py --raw_zarr ${imgs}/0 \
+        --peaks ${peaks} \
+        --stem ${new_stem} \
+        --channel_info ${channel_info} \
+        --coding_cyc_starts_from 1
     """
 }
 
@@ -223,7 +227,7 @@ process Preprocess_peak_profiles {
     tuple val(stem), file(profiles), file(peak_locations)
 
     output:
-    tuple val(stem), file("${stem}_filtaered_peak_intensities*"), file("${stem}_filtered_peak_locs.csv"), emit: peaks_for_decoding
+    tuple val(stem), file("${stem}_filtaered_peak_intensities.npy"), file("${stem}_filtered_peak_locs.csv"), emit: peaks_for_decoding
 
     script:
     """
@@ -280,18 +284,9 @@ process Heatmap_plot {
 workflow {
     Codebook_conversion(Channel.fromPath(params.codebook))
     Get_meatdata(Codebook_conversion.out.taglist_name, Codebook_conversion.out.channel_info_name)
-    bf2raw(params.ome_tif)
-    Enhance_spots(bf2raw.out, params.anchor_ch_indexes, Get_meatdata.out.channel_infos)
-    if (params.anchor_peaks_tsv != "") {
-        peaks = Channel.fromPath(params.anchor_peaks_tsv)
-    } else {
-        Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img, params.anchor_ch_indexes)
-        peaks = Call_peaks_in_anchor.out.peaks_from_anchor_chs
-        /*Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)*/
-    }
+    peak_calling()
     Extract_peak_intensities(
-        peaks, Enhance_spots.out.ch_with_peak_img,
-        Get_meatdata.out.channel_infos
+        peak_calling.out.peaks_and_enhanced_raw.combine(Get_meatdata.out.channel_infos)
     )
     Preprocess_peak_profiles(Extract_peak_intensities.out.peaks_for_preprocessing)
     Decode_peaks(
@@ -300,11 +295,33 @@ workflow {
         Get_meatdata.out.gene_names,
         Get_meatdata.out.channel_infos
     )
-    Heatmap_plot(Decode_peaks.out[0])
+    /*Heatmap_plot(Decode_peaks.out[0])*/
 }
 
-workflow peak_calling_only{
+workflow peak_calling {
     bf2raw(params.ome_tif)
-    Enhance_spots(bf2raw.out, params.anchor_ch_indexes, Get_meatdata.out.channel_infos)
-    peaks = Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img, params.anchor_ch_indexes).out.peaks_from_anchor_chs
+    Enhance_spots(bf2raw.out, params.anchor_ch_indexes, channel.from(params.rna_spot_size))
+    if (params.anchor_peaks_tsv != "") {
+        peaks = Channel.fromPath(params.anchor_peaks_tsv)
+    } else {
+        Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img, params.anchor_ch_indexes,
+            channel.from(params.trackpy_percentile),
+            channel.from(params.trackpy_separation),
+            channel.from(params.trackpy_search_range)
+        )
+        peaks = Call_peaks_in_anchor.out.peaks_from_anchor_chs
+        /*Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)*/
+    }
+    Enhance_spots.out.ch_with_peak_img
+        .flatMap{it-> [it] * params.trackpy_percentile.size()}
+        .set{duplicated_spots}
+        /*.view()*/
+    peaks.cross(duplicated_spots)
+        .map{it -> [it[0][0], it[0][1], it[1][1], it[1][2]]}
+        .set{peaks_and_enhanced_raw}
+        /*.view()*/
+
+    emit:
+    peaks_and_enhanced_raw = peaks_and_enhanced_raw
+
 }

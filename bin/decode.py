@@ -21,7 +21,7 @@ def main(stem, spot_profile, spot_loc, barcodes_01, gene_names, channels_info):
     # load
     spot_profile = np.load(spot_profile)
     print(spot_profile)
-    spot_loc = pd.read_csv(spot_loc)
+    spot_loc = pd.read_csv(spot_loc, index_col=0)
     barcodes_01 = np.load(barcodes_01, allow_pickle=True)
     gene_names = np.load(gene_names, allow_pickle=True)
     with open(channels_info, "rb") as fp:
