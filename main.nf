@@ -299,7 +299,7 @@ workflow {
 }
 
 workflow peak_calling {
-    bf2raw(params.ome_tif)
+    bf2raw(channel.fromPath(params.ome_tif))
     Enhance_spots(bf2raw.out, params.anchor_ch_indexes, channel.from(params.rna_spot_size))
     if (params.anchor_peaks_tsv != "") {
         peaks = Channel.fromPath(params.anchor_peaks_tsv)
