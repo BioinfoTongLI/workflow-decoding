@@ -56,7 +56,7 @@ process bf2raw {
 
 
 process Codebook_conversion {
-    echo true
+    debug true
     cache "lenient"
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     storeDir params.out_dir + "/decoding_metadata"
@@ -77,7 +77,7 @@ process Codebook_conversion {
 
 
 process Get_meatdata {
-    echo true
+    debug true
     cache "lenient"
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     storeDir params.out_dir + "/decoding_metadata"
@@ -123,7 +123,7 @@ process Enhance_spots {
 
 
 process Deepblink_and_Track {
-    echo true
+    debug true
     cache "lenient"
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:deepblink"
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
@@ -144,13 +144,13 @@ process Deepblink_and_Track {
 
 
 process Call_peaks_in_anchor {
-    echo true
+    debug true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all"
     storeDir params.out_dir + "/anchor_spots"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
-    maxForks 1
+    maxForks 2
 
     input:
     tuple val(rna_spot_size), val(stem), file(anchor_zarr)
@@ -171,7 +171,7 @@ process Call_peaks_in_anchor {
 
 
 process Process_peaks {
-    echo true
+    debug true
     cache "lenient"
     container "docker://rapidsai/rapidsai:cuda11.2-base-ubuntu20.04-py3.8"
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
@@ -192,11 +192,13 @@ process Process_peaks {
 
 
 process Extract_peak_intensities {
-    echo true
+    debug true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all"
-    /*storeDir params.out_dir + "/peak_intensities"*/
-    publishDir params.out_dir + "/peak_intensities", mode:"copy"
+    storeDir params.out_dir + "/peak_intensities"
+    /*publishDir params.out_dir + "/peak_intensities", mode:"copy"*/
+
+    maxForks 2
 
     input:
     tuple val(rna_spot_size), path(peaks), val(stem), path(imgs), path(channel_info)
@@ -217,7 +219,7 @@ process Extract_peak_intensities {
 
 
 process Preprocess_peak_profiles {
-    echo true
+    debug true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all"
     storeDir params.out_dir + "/preprocessed_peak_intensities"
@@ -237,17 +239,14 @@ process Preprocess_peak_profiles {
 
 
 process Decode_peaks {
-    echo true
+    debug true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     containerOptions "--gpus all"
     storeDir params.out_dir + "decoded"
     /*publishDir params.out_dir + "/decoded", mode:"copy"*/
 
     input:
-    tuple val(stem), file(spot_profile), file(spot_loc)
-    file barcodes_f
-    file gene_names_f
-    file channel_info_f
+    tuple val(stem), file(spot_profile), file(spot_loc), file(barcodes_f), file(gene_names_f), file(channel_info_f)
 
     output:
     file "${stem}_decoded_df.tsv"
@@ -261,7 +260,7 @@ process Decode_peaks {
 
 
 process Heatmap_plot {
-    echo true
+    debug true
     container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
     publishDir params.out_dir + "/plots", mode:"copy"
 
@@ -289,12 +288,12 @@ workflow {
         peak_calling.out.peaks_and_enhanced_raw.combine(Get_meatdata.out.channel_infos)
     )
     Preprocess_peak_profiles(Extract_peak_intensities.out.peaks_for_preprocessing)
-    Decode_peaks(
-        Preprocess_peak_profiles.out.peaks_for_decoding,
-        Get_meatdata.out.barcodes,
-        Get_meatdata.out.gene_names,
-        Get_meatdata.out.channel_infos
-    )
+    Preprocess_peak_profiles.out.peaks_for_decoding
+        .combine(Get_meatdata.out.barcodes)
+        .combine(Get_meatdata.out.gene_names)
+        .combine(Get_meatdata.out.channel_infos)
+        .set{for_decoding}
+    Decode_peaks(for_decoding)
     /*Heatmap_plot(Decode_peaks.out[0])*/
 }
 
@@ -312,12 +311,8 @@ workflow peak_calling {
         peaks = Call_peaks_in_anchor.out.peaks_from_anchor_chs
         /*Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)*/
     }
-    Enhance_spots.out.ch_with_peak_img
-        .flatMap{it-> [it] * params.trackpy_percentile.size()}
-        .set{duplicated_spots}
-        /*.view()*/
-    peaks.cross(duplicated_spots)
-        .map{it -> [it[0][0], it[0][1], it[1][1], it[1][2]]}
+    peaks.combine(Enhance_spots.out.ch_with_peak_img)
+        .map{it -> [it[0], it[1], it[3], it[4]]}
         .set{peaks_and_enhanced_raw}
         /*.view()*/
 
