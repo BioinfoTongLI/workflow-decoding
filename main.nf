@@ -198,7 +198,7 @@ process Extract_peak_intensities {
     storeDir params.out_dir + "/peak_intensities"
     /*publishDir params.out_dir + "/peak_intensities", mode:"copy"*/
 
-    maxForks 2
+    maxForks 1 //this step requires a lot of RAM
 
     input:
     tuple val(rna_spot_size), path(peaks), val(stem), path(imgs), path(channel_info)
@@ -318,5 +318,4 @@ workflow peak_calling {
 
     emit:
     peaks_and_enhanced_raw = peaks_and_enhanced_raw
-
 }

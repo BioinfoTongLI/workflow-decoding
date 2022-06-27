@@ -163,7 +163,7 @@ def main(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from, peak_radiu
         formatted_peak_profiles,
         allow_pickle=True,
     )
-    peaks.to_csv(f"{stem}_peak_locs.csv")
+    peaks.to_csv(f"{stem}_peak_locs.csv", index=False)
 
 
 if __name__ == "__main__":
