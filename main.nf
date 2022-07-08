@@ -245,12 +245,14 @@ process Decode_peaks {
     storeDir params.out_dir + "decoded"
     /*publishDir params.out_dir + "/decoded", mode:"copy"*/
 
+    maxForks 1
+
     input:
     tuple val(stem), file(spot_profile), file(spot_loc), file(barcodes_f), file(gene_names_f), file(channel_info_f)
 
     output:
-    file "${stem}_decoded_df.tsv"
-    file "${stem}_decode_out_parameters.pickle"
+    path "${stem}_decoded_df.tsv"
+    path "${stem}_decode_out_parameters.pickle" optional true
 
     script:
     """
