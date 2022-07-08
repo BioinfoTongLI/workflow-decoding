@@ -14,6 +14,7 @@ params.anchor_ch_indexes = 2
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
 params.codebook = ""
+params.chunk_size = 3000000
 
 params.anchor_peaks_tsv = "" // if avaiable peaks were detected by Synquant
 
@@ -249,6 +250,7 @@ process Decode_peaks {
 
     input:
     tuple val(stem), file(spot_profile), file(spot_loc), file(barcodes_f), file(gene_names_f), file(channel_info_f)
+    val(chunk_size)
 
     output:
     path "${stem}_decoded_df.tsv"
@@ -256,7 +258,7 @@ process Decode_peaks {
 
     script:
     """
-    decode.py --spot_profile ${spot_profile} --spot_loc ${spot_loc} --barcodes_01 ${barcodes_f} --gene_names ${gene_names_f} --channels_info ${channel_info_f} --stem ${stem}
+    decode.py --spot_profile ${spot_profile} --spot_loc ${spot_loc} --barcodes_01 ${barcodes_f} --gene_names ${gene_names_f} --channels_info ${channel_info_f} --stem ${stem} --chunk_size ${chunk_size}
     """
 }
 
@@ -295,7 +297,7 @@ workflow {
         .combine(Get_meatdata.out.gene_names)
         .combine(Get_meatdata.out.channel_infos)
         .set{for_decoding}
-    Decode_peaks(for_decoding)
+    Decode_peaks(for_decoding, params.chunk_size)
     /*Heatmap_plot(Decode_peaks.out[0])*/
 }
 
