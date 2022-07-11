@@ -14,7 +14,7 @@ params.anchor_ch_indexes = 2
 params.taglist_name = "taglist.csv"
 params.channel_info_name = "channel_info.csv"
 params.codebook = ""
-params.chunk_size = 3000000
+params.chunk_size = 99999999 //3000000
 
 params.anchor_peaks_tsv = "" // if avaiable peaks were detected by Synquant
 
@@ -241,12 +241,13 @@ process Preprocess_peak_profiles {
 
 process Decode_peaks {
     debug true
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
-    containerOptions "--gpus all"
+    container "/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif"
+    containerOptions "--nv"
     storeDir params.out_dir + "decoded"
     /*publishDir params.out_dir + "/decoded", mode:"copy"*/
 
-    maxForks 1
+    /*queue "teramem"*/
+    memory "650 GB"
 
     input:
     tuple val(stem), file(spot_profile), file(spot_loc), file(barcodes_f), file(gene_names_f), file(channel_info_f)
