@@ -59,7 +59,11 @@ process bf2raw {
 process Codebook_conversion {
     debug true
     cache "lenient"
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
     storeDir params.out_dir + "/decoding_metadata"
 
     input:
@@ -80,7 +84,11 @@ process Codebook_conversion {
 process Get_meatdata {
     debug true
     cache "lenient"
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
     storeDir params.out_dir + "/decoding_metadata"
     /*publishDir params.out_dir + "/decoding_metadata", mode:"copy"*/
 
@@ -103,7 +111,11 @@ process Get_meatdata {
 process Enhance_spots {
     debug true
     cache "lenient"
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
     containerOptions "--gpus all"
     storeDir params.out_dir + "/enhanced_anchor_channels"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
@@ -126,7 +138,10 @@ process Enhance_spots {
 process Deepblink_and_Track {
     debug true
     cache "lenient"
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:deepblink"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
     /*storeDir params.out_dir + "/anchor_spots"*/
     publishDir params.out_dir + "/anchor_spots", mode:"copy"
@@ -146,7 +161,11 @@ process Deepblink_and_Track {
 
 process Call_peaks_in_anchor {
     debug true
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
+
     containerOptions "--gpus all"
     storeDir params.out_dir + "/anchor_spots"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
@@ -174,7 +193,10 @@ process Call_peaks_in_anchor {
 process Process_peaks {
     debug true
     cache "lenient"
-    container "docker://rapidsai/rapidsai:cuda11.2-base-ubuntu20.04-py3.8"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
     containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
     /*storeDir params.out_dir + "/anchor_spots"*/
     publishDir params.out_dir + "/anchor_spots", mode:"copy"
@@ -194,7 +216,10 @@ process Process_peaks {
 
 process Extract_peak_intensities {
     debug true
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
     containerOptions "--gpus all"
     storeDir params.out_dir + "/peak_intensities"
     /*publishDir params.out_dir + "/peak_intensities", mode:"copy"*/
@@ -221,8 +246,11 @@ process Extract_peak_intensities {
 
 process Preprocess_peak_profiles {
     debug true
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
-    containerOptions "--gpus all"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
+    containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
     storeDir params.out_dir + "/preprocessed_peak_intensities"
     /*publishDir params.out_dir + "/preprocessed_peak_intensities", mode:"copy"*/
 
@@ -241,7 +269,12 @@ process Preprocess_peak_profiles {
 
 process Decode_peaks {
     debug true
-    container "/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif"
+
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
+
     containerOptions "--nv"
     storeDir params.out_dir + "decoded"
     /*publishDir params.out_dir + "/decoded", mode:"copy"*/
@@ -266,7 +299,10 @@ process Decode_peaks {
 
 process Heatmap_plot {
     debug true
-    container "gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
+        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+
     publishDir params.out_dir + "/plots", mode:"copy"
 
     input:
