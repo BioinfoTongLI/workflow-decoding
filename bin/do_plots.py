@@ -150,16 +150,33 @@ def heatmap_pattern(decoded_df,name,grid=150, thr=0.7,plot_probs=True):
     return H
 
 
-def main(decoded_df):
+def main(decoded_df, decode_out_params):
     import os
     import sys
     import matplotlib.pyplot as plt
-    sys.path.insert(1, os.path.join(sys.path[0], '../py_scripts'))
+    sys.path.insert(1, os.path.join(sys.path[0], '../bin'))
     from do_plots import heatmap_pattern
+
+    # with open(decode_out_params, "rb") as fp:
+        # decode_out_params = pickle.load(fp)
+    # print(decode_out_params)
+    # with open(channels_info, "rb") as fp:
+        # channels_info = pickle.load(fp)
+    # C = channels_info["C"]
+    # R = channels_info["R"]
+
+    # plot_mean_cov_of_classes(decode_out_params, R, C)
+
+    # plot_loss(decode_out_params)
+
     decoded_df = pd.read_csv(decoded_df, sep="\t")
     decoded_df["Name"] = decoded_df["Name"].astype(str)
     decoded_df["X"] = decoded_df.x_int
     decoded_df["Y"] = decoded_df.y_int
+
+
+    plot_hist_after_thresholding(decoded_df)
+
     for n in decoded_df.Name.unique():
         hm = heatmap_pattern(decoded_df, n, grid=150)
         fig, ax = plt.subplots()
@@ -167,17 +184,6 @@ def main(decoded_df):
         fig.colorbar(pos, ax=ax)
         plt.title(n)
         plt.savefig(f"./{n}.png", dpi=200)
-    # with open(args.decode_out_params, "rb") as fp:
-        # decode_out_params = pickle.load(fp)
-    # # print(decode_out_params)
-    # with open(args.channels_info, "rb") as fp:
-        # channels_info = pickle.load(fp)
-    # C = channels_info["C"]
-    # R = channels_info["R"]
-
-    # plot_loss(decode_out_params)
-    # plot_mean_cov_of_classes(decode_out_params, R, C)
-    # plot_hist_after_thresholding(decoded_df)
 
 
 if __name__ == "__main__":
