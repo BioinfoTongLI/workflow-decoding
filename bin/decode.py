@@ -24,11 +24,12 @@ def main(
     barcodes_01,
     gene_names,
     channels_info,
+    prob_threshold=0.6,
     chunk_size=3 * 10**6,
 ):
     # load
-    spot_profile = np.load(spot_profile)
-    spot_loc = pd.read_csv(spot_loc, index_col=0)
+    spot_profile = np.load(spot_profile, allow_pickle=True)
+    spot_loc = pd.read_csv(spot_loc, index_col=0, sep="\t")
     print(spot_profile.shape, spot_loc)
     barcodes_01 = np.load(barcodes_01, allow_pickle=True)
     gene_names = np.load(gene_names, allow_pickle=True)
@@ -67,6 +68,8 @@ def main(
     # assert decoded_spots_df.isnull().values.any() # shouldn't have any nan in the df
 
     decoded_spots_df.to_csv(f"{stem}_decoded_df.tsv", sep="\t", index=False)
+    selected_peaks = decoded_spots_df[decoded_spots_df.Probability > prob_threshold]
+    selected_peaks.to_csv(f"{stem}_decoded_df_prob_thresholded_{prob_threshold}.tsv", sep="\t", index=False)
 
 
 if __name__ == "__main__":
