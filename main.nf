@@ -9,6 +9,10 @@ params.ome_tif = ''
 params.out_dir = ''
 params.rna_spot_size = [5, 7]
 params.anchor_ch_indexes = 2
+params.prob_threshold = 0.6
+
+params.peak_profile = ''
+params.peak_location = ''
 
 // needed when decoding
 params.taglist_name = "taglist.csv"
@@ -270,24 +274,25 @@ process Preprocess_peak_profiles {
 process Decode_peaks {
     debug true
 
+    /*label "large_mem"*/
+    label "huge_mem"
+
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         '/lustre/scratch117/cellgen/team283/tl10/sifs/gmm_decode.sif':
         'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+    containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
 
-
-    containerOptions "--nv"
     storeDir params.out_dir + "decoded"
     /*publishDir params.out_dir + "/decoded", mode:"copy"*/
-
-    /*queue "teramem"*/
-    memory "650 GB"
 
     input:
     tuple val(stem), file(spot_profile), file(spot_loc), file(barcodes_f), file(gene_names_f), file(channel_info_f)
     val(chunk_size)
+    val(prob_thre)
 
     output:
     path "${stem}_decoded_df.tsv"
+    path "${stem}_decoded_df_prob_thresholded_${prob_thre}.tsv"
     path "${stem}_decode_out_parameters.pickle" optional true
 
     script:
@@ -334,7 +339,7 @@ workflow {
         .combine(Get_meatdata.out.gene_names)
         .combine(Get_meatdata.out.channel_infos)
         .set{for_decoding}
-    Decode_peaks(for_decoding, params.chunk_size)
+    Decode_peaks(for_decoding, params.chunk_size, params.prob_threshold)
     /*Heatmap_plot(Decode_peaks.out[0])*/
 }
 
@@ -359,4 +364,17 @@ workflow peak_calling {
 
     emit:
     peaks_and_enhanced_raw = peaks_and_enhanced_raw
+}
+
+workflow Decode {
+    Codebook_conversion(Channel.fromPath(params.codebook))
+    Get_meatdata(Codebook_conversion.out.taglist_name, Codebook_conversion.out.channel_info_name)
+
+    for_decoding = channel.from("HZ_HLB").combine(channel.fromPath(params.peak_profile))
+        .combine(channel.fromPath(params.peak_location))
+        .combine(Get_meatdata.out.barcodes)
+        .combine(Get_meatdata.out.gene_names)
+        .combine(Get_meatdata.out.channel_infos)
+    /*for_decoding.view()*/
+    Decode_peaks(for_decoding, params.chunk_size, params.prob_threshold)
 }
