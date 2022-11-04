@@ -167,17 +167,17 @@ def main(decoded_df):
         fig.colorbar(pos, ax=ax)
         plt.title(n)
         plt.savefig(f"./{n}.png", dpi=200)
-    # with open(args.decode_out_params, "rb") as fp:
-        # decode_out_params = pickle.load(fp)
-    # # print(decode_out_params)
-    # with open(args.channels_info, "rb") as fp:
-        # channels_info = pickle.load(fp)
-    # C = channels_info["C"]
-    # R = channels_info["R"]
+    with open(args.decode_out_params, "rb") as fp:
+        decode_out_params = pickle.load(fp)
+    print(decode_out_params)
+    with open(args.channels_info, "rb") as fp:
+        channels_info = pickle.load(fp)
+    C = channels_info["C"]
+    R = channels_info["R"]
 
-    # plot_loss(decode_out_params)
-    # plot_mean_cov_of_classes(decode_out_params, R, C)
-    # plot_hist_after_thresholding(decoded_df)
+    plot_loss(decode_out_params)
+    plot_mean_cov_of_classes(decode_out_params, R, C)
+    plot_hist_after_thresholding(decoded_df)
 
 
 if __name__ == "__main__":
