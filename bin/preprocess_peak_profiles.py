@@ -24,7 +24,7 @@ def main(profiles, spot_loc, stem):
     filtered_spot = spot_loc[mask]
 
     np.save(
-        f"{stem}_filtaered_peak_intensities.npy",
+        f"{stem}_filtered_peak_intensities.npy",
         filtered_profiles,
         allow_pickle=True,
     )

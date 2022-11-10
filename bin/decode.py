@@ -29,7 +29,10 @@ def main(
 ):
     # load
     spot_profile = np.load(spot_profile, allow_pickle=True)
-    spot_loc = pd.read_csv(spot_loc, index_col=0, sep="\t")
+    if spot_loc.endswith(".tsv"):
+        spot_loc = pd.read_csv(spot_loc, index_col=0, sep="\t")
+    else:
+        spot_loc = pd.read_csv(spot_loc, index_col=0)
     print(spot_profile.shape, spot_loc)
     barcodes_01 = np.load(barcodes_01, allow_pickle=True)
     gene_names = np.load(gene_names, allow_pickle=True)
