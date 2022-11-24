@@ -156,14 +156,10 @@ def train(
 ):
     pyro.clear_param_store()
     losses = []
-    if print_training_progress:
-        for j in tqdm(range(num_iterations)):
-            loss = svi.step(data, N, D, C, R, K, codes, batch_size)
-            losses.append(loss)
-    else:
-        for j in range(num_iterations):
-            loss = svi.step(data, N, D, C, R, K, codes, batch_size)
-            losses.append(loss)
+    for j in tqdm(range(num_iterations), disable=~print_training_progress):
+        loss = svi.step(torch.nan_to_num(data), # replace nan by 0, otherwise bugs
+                        N, D, C, R, K, codes, batch_size)
+        losses.append(loss)
     return losses
 
 
@@ -229,7 +225,7 @@ def decoding_function(
     s = torch.tensor(np.percentile(data[ind_keep, :].numpy(), 60, axis=0))
     max_s = torch.tensor(np.percentile(data[ind_keep, :].numpy(), 99.9, axis=0))
     min_s = torch.min(data[ind_keep, :], dim=0).values
-    log_add = (s ** 2 - max_s * min_s) / (max_s + min_s - 2 * s)
+    log_add = (s**2 - max_s * min_s) / (max_s + min_s - 2 * s)
     log_add = torch.max(
         -torch.min(data[ind_keep, :], dim=0).values + 1e-10, other=log_add.float()
     )
@@ -237,6 +233,7 @@ def decoding_function(
     data_log_mean = data_log[ind_keep, :].mean(dim=0, keepdim=True)
     data_log_std = data_log[ind_keep, :].std(dim=0, keepdim=True)
     data_norm = (data_log - data_log_mean) / data_log_std  # column-wise normalization
+    data_norm = torch.nan_to_num(data_norm)
     # training:
     pyro.set_rng_seed(1)  # seed for reproducibility when N<batch_size
     losses = train(
