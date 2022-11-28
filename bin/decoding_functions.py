@@ -157,8 +157,7 @@ def train(
     pyro.clear_param_store()
     losses = []
     for j in tqdm(range(num_iterations), disable=~print_training_progress):
-        loss = svi.step(torch.nan_to_num(data), # replace nan by 0, otherwise bugs
-                        N, D, C, R, K, codes, batch_size)
+        loss = svi.step(data, N, D, C, R, K, codes, batch_size)
         losses.append(loss)
     return losses
 
@@ -233,7 +232,6 @@ def decoding_function(
     data_log_mean = data_log[ind_keep, :].mean(dim=0, keepdim=True)
     data_log_std = data_log[ind_keep, :].std(dim=0, keepdim=True)
     data_norm = (data_log - data_log_mean) / data_log_std  # column-wise normalization
-    data_norm = torch.nan_to_num(data_norm)
     # training:
     pyro.set_rng_seed(1)  # seed for reproducibility when N<batch_size
     losses = train(
