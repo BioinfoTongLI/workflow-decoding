@@ -105,8 +105,9 @@ def main_multicycle(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from=
     # peaks.to_csv(f"{stem}_peak_locs.csv", index=False)
 
 
-def main(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from, peak_radius=1,
-        n_ch=35):
+def main(
+    stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from, peak_radius=1, n_ch=35
+):
     peak_sur_coord = np.arange(-peak_radius, peak_radius + 1)
     xx, yy = np.meshgrid(peak_sur_coord, peak_sur_coord)
     dXYpair = zip(xx.reshape(-1), yy.reshape(-1))
@@ -147,9 +148,7 @@ def main(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from, peak_radiu
         images_in_current_cycle = raw_data[cyc_ch_indexes, :, :].compute()
         surrounding_pixels = []
         for j in range(len(Xs)):
-            surrounding_pixels.append(
-                    images_in_current_cycle[:, Ys[j], Xs[j]]
-                )
+            surrounding_pixels.append(images_in_current_cycle[:, Ys[j], Xs[j]])
         surrounding_pixels = np.array(surrounding_pixels)
         max_intensities = np.max(surrounding_pixels, axis=0)
         print(max_intensities.shape)
