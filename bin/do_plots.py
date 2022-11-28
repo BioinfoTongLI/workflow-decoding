@@ -122,31 +122,65 @@ def plot_hist_after_thresholding(decoded_df):
 
 
 # function creating a heatmap for plotting spatial patterns
-def heatmap_pattern(decoded_df,name,grid=150, thr=0.7,plot_probs=True):
-    if not 'Probability' in decoded_df.columns:
-        if not 'Score' in decoded_df.columns:
+def heatmap_pattern(decoded_df, name, grid=150, thr=0.7, plot_probs=True):
+    if not "Probability" in decoded_df.columns:
+        if not "Score" in decoded_df.columns:
             plot_probs = False
-            x_coord = np.floor(decoded_df.X[(decoded_df.Name == name)].to_numpy(dtype=np.double) / grid).astype(np.int32)
-            y_coord = np.floor(decoded_df.Y[(decoded_df.Name == name)].to_numpy(dtype=np.double) / grid).astype(np.int32)
+            x_coord = np.floor(
+                decoded_df.X[(decoded_df.Name == name)].to_numpy(dtype=np.double) / grid
+            ).astype(np.int32)
+            y_coord = np.floor(
+                decoded_df.Y[(decoded_df.Name == name)].to_numpy(dtype=np.double) / grid
+            ).astype(np.int32)
         else:
-            x_coord = np.floor(decoded_df.X[(decoded_df.Name == name) & (decoded_df.Score > thr)].to_numpy(dtype=np.double) / grid).astype(np.int32)
-            y_coord = np.floor(decoded_df.Y[(decoded_df.Name == name) & (decoded_df.Score > thr)].to_numpy(dtype=np.double) / grid).astype(np.int32)
+            x_coord = np.floor(
+                decoded_df.X[
+                    (decoded_df.Name == name) & (decoded_df.Score > thr)
+                ].to_numpy(dtype=np.double)
+                / grid
+            ).astype(np.int32)
+            y_coord = np.floor(
+                decoded_df.Y[
+                    (decoded_df.Name == name) & (decoded_df.Score > thr)
+                ].to_numpy(dtype=np.double)
+                / grid
+            ).astype(np.int32)
     else:
-        x_coord = np.floor(decoded_df.X[(decoded_df.Name == name) & (decoded_df.Probability >thr)].to_numpy(dtype=np.double)/grid).astype(np.int32)
-        y_coord = np.floor(decoded_df.Y[(decoded_df.Name == name) & (decoded_df.Probability >thr)].to_numpy(dtype=np.double)/grid).astype(np.int32)
-    H = np.zeros((int(np.ceil(decoded_df.Y.to_numpy(dtype=np.double).max()/grid)),int(np.ceil(decoded_df.X.to_numpy(dtype=np.double).max()/grid))))
+        x_coord = np.floor(
+            decoded_df.X[
+                (decoded_df.Name == name) & (decoded_df.Probability > thr)
+            ].to_numpy(dtype=np.double)
+            / grid
+        ).astype(np.int32)
+        y_coord = np.floor(
+            decoded_df.Y[
+                (decoded_df.Name == name) & (decoded_df.Probability > thr)
+            ].to_numpy(dtype=np.double)
+            / grid
+        ).astype(np.int32)
+    H = np.zeros(
+        (
+            int(np.ceil(decoded_df.Y.to_numpy(dtype=np.double).max() / grid)),
+            int(np.ceil(decoded_df.X.to_numpy(dtype=np.double).max() / grid)),
+        )
+    )
     if plot_probs:
-        if 'Probability' in decoded_df.columns:
-            prob = decoded_df.Probability[decoded_df.Name == name].to_numpy(dtype=np.double)
-        elif 'Score' in decoded_df.columns:
+        if "Probability" in decoded_df.columns:
+            prob = decoded_df.Probability[decoded_df.Name == name].to_numpy(
+                dtype=np.double
+            )
+        elif "Score" in decoded_df.columns:
             prob = decoded_df.Score[decoded_df.Name == name].to_numpy(dtype=np.double)
-        prob[prob<thr]=0
+        prob[prob < thr] = 0
         for i in range(len(x_coord)):
-            H[y_coord[i],x_coord[i]] = H[y_coord[i],x_coord[i]] + prob[i]
+            H[y_coord[i], x_coord[i]] = H[y_coord[i], x_coord[i]] + prob[i]
     else:
-        coords = np.concatenate((y_coord.reshape((len(x_coord),1)),x_coord.reshape((len(x_coord),1))), axis=1)
-        coords_u ,coords_c = np.unique(coords ,axis=0, return_counts=True)
-        H[coords_u[:,0],coords_u[:,1]]=coords_c
+        coords = np.concatenate(
+            (y_coord.reshape((len(x_coord), 1)), x_coord.reshape((len(x_coord), 1))),
+            axis=1,
+        )
+        coords_u, coords_c = np.unique(coords, axis=0, return_counts=True)
+        H[coords_u[:, 0], coords_u[:, 1]] = coords_c
     return H
 
 
@@ -154,14 +188,15 @@ def main(decoded_df, decode_out_params):
     import os
     import sys
     import matplotlib.pyplot as plt
-    sys.path.insert(1, os.path.join(sys.path[0], '../bin'))
+
+    sys.path.insert(1, os.path.join(sys.path[0], "../bin"))
     from do_plots import heatmap_pattern
 
     # with open(decode_out_params, "rb") as fp:
-        # decode_out_params = pickle.load(fp)
+    # decode_out_params = pickle.load(fp)
     # print(decode_out_params)
     # with open(channels_info, "rb") as fp:
-        # channels_info = pickle.load(fp)
+    # channels_info = pickle.load(fp)
     # C = channels_info["C"]
     # R = channels_info["R"]
 
@@ -173,7 +208,6 @@ def main(decoded_df, decode_out_params):
     decoded_df["Name"] = decoded_df["Name"].astype(str)
     decoded_df["X"] = decoded_df.x_int
     decoded_df["Y"] = decoded_df.y_int
-
 
     plot_hist_after_thresholding(decoded_df)
 
