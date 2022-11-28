@@ -13,43 +13,44 @@ import fire
 import pandas as pd
 import re
 import numpy as np
+from collections import OrderedDict
 
 
-channel_map = {"AF750": "C", "Cy5": "G", "Cy3": "T", "AF488": "A"}
-nucleotide_map = {"1": "C", "2": "G", "3": "T", "4": "A"}
+channel_map = OrderedDict({"Cy5": "A", "AF488": "G", "Cy3": "C", "AF750": "T"}) # This is orderd! pay attention to this!!!
+# nucleotide_map = {"1": "A", "2": "G", "3": "C", "4": "T"}
 
 
-def convert2AGCT(codelist):
-    AGCT_codes = []
-    for g in codelist:
-        AGCT_codes.append("".join([nucleotide_map[i] for i in str(g)]))
-    return AGCT_codes
+# def convert2AGCT(codelist):
+    # AGCT_codes = []
+    # for g in codelist:
+        # AGCT_codes.append("".join([nucleotide_map[i] for i in str(g)]))
+    # return AGCT_codes
 
 
-def get_channel_info(col_list):
-    n_chs = []
-    n_cycs = []
-    ch_info = {}
-    for col in col_list:
-        m = re.search("cycle(\d+)_channel(\d+)_(.*)", col)
-        if m:
-            cyc = int(m.group(1))
-            ch = int(m.group(2))
-            n_chs.append(ch)
-            n_cycs.append(cyc)
-            ch_name = m.group(3)
-            if ch_name == "DAPI":
-                ch_info[ch_name] = "nuclei"
-            else:
-                ch_info[ch_name] = nucleotide_map[str(ch)]
-            print(cyc, ch, ch_name, col)
-    n_ch_set = set(n_chs)
-    assert len(n_ch_set) == max(n_ch_set)
-    n_cyc_set = set(n_cycs)
-    assert len(n_cyc_set) == max(n_cyc_set)
-    ch_info["nCycles"] = max(n_cyc_set)
-    ch_info["nChannel"] = max(n_ch_set)
-    return ch_info
+# def get_channel_info(col_list):
+    # n_chs = []
+    # n_cycs = []
+    # ch_info = {}
+    # for col in col_list:
+        # m = re.search("cycle(\d+)_channel(\d+)_(.*)", col)
+        # if m:
+            # cyc = int(m.group(1))
+            # ch = int(m.group(2))
+            # n_chs.append(ch)
+            # n_cycs.append(cyc)
+            # ch_name = m.group(3)
+            # if ch_name == "DAPI":
+                # ch_info[ch_name] = "nuclei"
+            # else:
+                # ch_info[ch_name] = nucleotide_map[str(ch)]
+            # print(cyc, ch, ch_name, col)
+    # n_ch_set = set(n_chs)
+    # assert len(n_ch_set) == max(n_ch_set)
+    # n_cyc_set = set(n_cycs)
+    # assert len(n_cyc_set) == max(n_cyc_set)
+    # ch_info["nCycles"] = max(n_cyc_set)
+    # ch_info["nChannel"] = max(n_ch_set)
+    # return ch_info
 
 
 def main(csv_file):
@@ -57,19 +58,17 @@ def main(csv_file):
         d = pd.read_excel(csv_file)
     else:
         d = pd.read_csv(csv_file)
-    print(d)
     code_sizes = [len(str(c)) for c in d.code]
-    n_cycle = np.unique(code_sizes)
-    assert len(n_cycle) == 1
+    n_cycle_list = np.unique(code_sizes)
+    assert len(n_cycle_list) == 1
     channel_info = {}
-    channel_info["nCycles"] = n_cycle[0]
+    channel_info["nCycles"] = n_cycle_list[0]
 
     channel_dict = {}
     for col in d.columns:
         if col.startswith("cycle"):
             m = re.search("cycle(\d+)_channel(\d+)_(.*)", col)
             channel_dict[(m.group(1), m.group(2))] = m.group(3)
-    print(channel_dict)
     nucleotide_codes = []
     for gene_ind in d.index:
         gene = d.loc[gene_ind]
@@ -80,7 +79,6 @@ def main(csv_file):
             assert gene[col_name] == 1
             str_l.append(ch_name)
         nucleotids = "".join([channel_map[s] for s in str_l])
-        # print(nucleotids)
         nucleotide_codes.append(nucleotids)
     d["nucleotide_codes"] = nucleotide_codes
     channel_indexes = [int(k[1]) for k in channel_dict.keys()]
@@ -88,17 +86,22 @@ def main(csv_file):
     channel_info["nChannel"] = np.max(channel_indexes)
     channel_info["DAPI"] = "nuclei"
     for ch in channel_map:
-        print(ch)
         if ch == "AF750":
             channel_info["Atto425"] = channel_map[ch]
         else:
             channel_info[ch] = channel_map[ch]
-    print(channel_info)
+    # print(channel_info)
 
     df = pd.DataFrame(pd.Series(channel_info)).T
     df.to_csv("channel_info.csv", index=False)
     print(df)
 
+    taglist = d[["gene", "nucleotide_codes"]]
+    taglist = taglist.rename(columns={"gene": "Gene", "nucleotide_codes": "Channel"})
+    print(taglist)
+    pd.DataFrame(taglist).to_csv("taglist.csv", index=False)
+
+    # -------------------------------------------------------------------------
     # ch_info = get_channel_info(d.columns)
     # print(ch_info)
     # df = pd.DataFrame(pd.Series(ch_info)).T
@@ -109,11 +112,6 @@ def main(csv_file):
 
     # df.to_csv("channel_info.csv", index=False)
     # d["Channel"] = convert2AGCT(d.code)
-
-    taglist = d[["gene", "nucleotide_codes"]]
-    taglist = taglist.rename(columns={"gene": "Gene", "nucleotide_codes": "Channel"})
-    print(taglist)
-    pd.DataFrame(taglist).to_csv("taglist.csv", index=False)
 
 
 if __name__ == "__main__":
