@@ -11,12 +11,12 @@ pandas
 scipy
 trackpy
 tifffile
-scikit-image
+scikit-image>=0.16
 starfish
 
 imagecodecs
 cucim
-cupy-cuda110
+cupy-cuda11x
 dask-image
 zarr
 aicsimageio
