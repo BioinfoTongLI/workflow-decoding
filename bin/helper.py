@@ -17,9 +17,13 @@ from ome_zarr.scale import Scaler
 from ome_zarr.io import parse_url
 
 from cucim.skimage.morphology import white_tophat, disk
+
+# from cucim.skimage.exposure import rescale_intensity
 import cupy as cp
 
 # from skimage.morphology import white_tophat, disk
+# from skimage.exposure import rescale_intensity
+# from skimage.restoration import denoise_wavelet
 import trackpy as tp
 import numpy as np
 import pathlib
@@ -29,7 +33,8 @@ import dask.array as da
 
 
 def white_tophat_cp(chunk, **kwargs):
-    return white_tophat(cp.array(chunk), **kwargs).get()
+    return white_tophat(cp.array(chunk), **kwargs).get().astype(np.uint16)
+
 
 class Helper(object):
     def __init__(self, zarr_in: str):
@@ -39,8 +44,12 @@ class Helper(object):
         self.raw_data = list(reader())[0].data[0]
 
     def enhance_spots(
-        self, stem: str, diam: int, ch_info: str, anchor_ch_ind: int = None,
-        tophat: bool = False
+        self,
+        stem: str,
+        diam: int,
+        ch_info: str,
+        anchor_ch_ind: int = None,
+        tophat: bool = False,
     ):
         # from cucim.skimage.exposure import equalize_adapthist
         # from skimage.exposure import equalize_adapthist, equalize_hist
@@ -83,68 +92,63 @@ class Helper(object):
             hat_enhenced = hat_enhenced.compute()
         else:
             hat_enhenced = chs_with_peaks.astype(np.float16).compute()
-        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced_diam_{diam}"), mode="w").store
+        store = parse_url(
+            pathlib.Path(f"{stem}_spot_enhanced_diam_{diam}"), mode="w"
+        ).store
         group = zarr.group(store=store).create_group("0")
 
-        write_image(image=hat_enhenced, group=group, chunks=(2 ** 10, 2 ** 10))
+        write_image(image=hat_enhenced, group=group, chunks=(2**10, 2**10))
 
         # tf.imwrite(f"{stem}_spot_enhanced.tif", hat_enhenced[0].squeeze(), imagej=True, metadata={'axes': 'YX'})
 
         return self
 
-
-    def enhance_all(self, stem: str, diam: int, topohat: bool=False):
+    def enhance_all(
+            self, stem: str, diam: int, anchor_ch_index: int, whitehat: bool = False
+    ):
         chs_with_peaks = self.raw_data[0, :, 0]
-        # enhanced_chs = []
-        # for ch in chs_with_peaks:
-            # enhanced_chs.append(white_tophat(cp.array(ch), footprint=disk(diam)).get())
-        # enhanced_chs = np.array(enhanced_chs)
-        # print(enhanced_chs)
-        # chs_with_peaks = chs_with_peaks.rechunk({0:1, 1:-1, 2:-1})
-        # chs_with_peaks = chs_with_peaks.rechunk({0:1, 1:"auto", 2:"auto"})
         print(chs_with_peaks)
-        # footprint = cp.expand_dims(disk(diam//2), 0)
-        footprint = disk(diam//2)
+        footprint = disk(diam // 2)
 
-        store = parse_url(pathlib.Path(f"{stem}_spot_enhanced_diam_{diam}"), mode="w").store
+        store = parse_url(
+            pathlib.Path(f"{stem}_spot_enhanced_diam_{diam}"), mode="w"
+        ).store
 
+        ref_img_to_match_hist = None
         for i in range(chs_with_peaks.shape[0]):
-            ch = chs_with_peaks[i].rechunk({0:"auto", 1:"auto"})
-            # hat_enhenced = white_tophat(cp.array(chs_with_peaks[i]), footprint=footprint).get()
-            if topohat:
+            ch = chs_with_peaks[i].rechunk({0: "auto", 1: "auto"})
+            if whitehat:
                 hat_enhenced = ch.map_overlap(
                     white_tophat_cp,
                     depth=(diam * 3, diam * 3),
                     footprint=footprint,
-                    dtype=np.float16,
+                    dtype=np.uint16,
                 )
             else:
                 hat_enhenced = ch
 
+            # Wavelet denoise
+            # denoised = (
+                # hat_enhenced.map_overlap(
+                    # denoise_wavelet,
+                    # # depth=(args.overlaps, args.overlaps, 0, 0),
+                    # depth=(diam * 3, diam * 3),
+                    # method="BayesShrink",
+                    # mode="soft",
+                    # sigma=diam * 1.5,
+                    # rescale_sigma=True,
+                    # channel_axis=None,
+                    # dtype=np.float16,
+                # )
+                # * 10**4
+            # ).astype(np.uint16)
+
+            # rescaled_ch = rescale_intensity(matched, in_range='image', out_range='dtype')
             group = zarr.group(store=store).create_group(f"0/{i}")
             write_image(image=hat_enhenced.compute(), group=group, axes="yx")
 
             del hat_enhenced
             cp._default_memory_pool.free_all_blocks()
-
-        # print(footprint)
-        # hat_enhenced = chs_with_peaks.map_overlap(
-            # white_tophat_cp,
-            # # white_tophat,
-            # # meta=cp.array(()),
-            # depth=(0, diam * 3, diam * 3),
-            # footprint=footprint,
-            # # selem=np.expand_dims(disk(diam), 0),
-            # dtype=np.float16,
-        # )
-
-        # store = parse_url(pathlib.Path(f"{stem}_spot_enhanced"), mode="w").store
-        # group = zarr.group(store=store).create_group("0")
-
-        # write_image(image=hat_enhenced.compute(), group=group, axes="cyx")
-
-        # write_image(image=enhanced_chs, group=group, axes="cyx", chunks=(1, 2 ** 10, 2 ** 10))
-
 
     def call_peaks(
         self,
@@ -153,7 +157,6 @@ class Helper(object):
         tp_percentile: int,
         peak_separation: int,
         tp_search_range: int,
-        anchor_ch_index: int
     ):
         print(self.raw_data)
         df = tp.locate(
@@ -164,27 +167,22 @@ class Helper(object):
             engine="numba",
             # minmass=50,
         )
-        print(df.y.max(), df.x.max())
         df["x_int"] = df.x.astype(np.uint32)
         df["y_int"] = df.y.astype(np.uint32)
-        df.to_csv(f"{stem}_detected_peaks_diam_{diam}_percentile_{tp_percentile}_sep_{peak_separation}_search_range_{tp_search_range}.tsv", sep="\t", index=False)
+        df.to_csv(
+            f"{stem}_detected_peaks_diam_{diam}_percentile_{tp_percentile}_sep_{peak_separation}_search_range_{tp_search_range}.tsv",
+            sep="\t",
+            index=False,
+        )
         # t = tp.link(df, tp_search_range, memory=0)
 
         # tracks = tp.filtering.filter_stubs(t, 5)
         # tracks = tracks.assign(
-            # x_int=lambda df: np.round(df.x).astype(np.uint64),
-            # y_int=lambda df: np.round(df.y).astype(np.uint64),
+        # x_int=lambda df: np.round(df.x).astype(np.uint64),
+        # y_int=lambda df: np.round(df.y).astype(np.uint64),
         # )
         # tracks.to_csv(f"{stem}_tracked_peaks.tsv", sep="\t")
 
 
 if __name__ == "__main__":
-    # from dask.distributed import Client, LocalCluster
-    # client = Client(
-        # # n_workers=10,
-        # # processes=False,
-        # # memory_limit="20GB",
-    # )
-    # print(client)
     fire.Fire(Helper)
-    # client.close()
