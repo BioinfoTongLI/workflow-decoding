@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.2.0-cudnn8-runtime-ubuntu20.04
+FROM nvidia/cuda:11.0.3-cudnn8-runtime-ubuntu20.04
+#FROM nvidia/cuda:11.0.0-runtime-ubuntu20.04
 
 #RUN conda install -c pytorch pytorch>=1.7.0 torchvision torchaudio #cudatoolkit=10.2
 

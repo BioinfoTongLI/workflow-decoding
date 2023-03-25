@@ -16,7 +16,6 @@ import numpy as np
 from collections import OrderedDict
 
 
-channel_map = OrderedDict({"Cy5": "A", "AF488": "G", "Cy3": "C", "AF750": "T"}) # This is orderd! pay attention to this!!!
 # nucleotide_map = {"1": "A", "2": "G", "3": "C", "4": "T"}
 
 
@@ -53,11 +52,15 @@ channel_map = OrderedDict({"Cy5": "A", "AF488": "G", "Cy3": "C", "AF750": "T"}) 
     # return ch_info
 
 
-def main(csv_file):
+def main(csv_file,
+         channel_map:dict={"Cy5": "A", "AF488": "G", "Cy3": "C", "Atto425": "T", "AF750":"T"}, # This is orderd! be cautious !!!
+         sep=","):
+    channel_map = OrderedDict(channel_map)
+    print(channel_map)
     if csv_file.endswith(".xlsx"):
         d = pd.read_excel(csv_file)
     else:
-        d = pd.read_csv(csv_file)
+        d = pd.read_csv(csv_file, sep=sep)
     code_sizes = [len(str(c)) for c in d.code]
     n_cycle_list = np.unique(code_sizes)
     assert len(n_cycle_list) == 1
