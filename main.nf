@@ -12,6 +12,8 @@ params.anchor_ch_indexes = 1
 params.prob_threshold = 0.6
 params.whitehat = 'True'
 params.peak_profile_cleanup = 'True'
+params.channel_map = ''
+params.codebook_sep = ","
 
 params.peak_profile = ''
 params.peak_location = ''
@@ -30,7 +32,7 @@ params.trackpy_percentile = [85, 90]
 params.trackpy_separation = 2
 params.trackpy_search_range = 5
 
-params.gmm_sif = "/lustre/scratch117/cellgen/team283/imaging_sifs/gmm_decode.sif"
+params.gmm_sif = "/lustre/scratch126/cellgen/team283/imaging_sifs/gmm_decode.sif"
 
 // not used in this version
 /*params.tile_name : "N1234F_tile_names.csv"*/
@@ -58,7 +60,7 @@ process bf2raw {
     script:
     stem = img.baseName
     """
-    /opt/bioformats2raw/bin/bioformats2raw --max_workers ${params.max_n_worker} --no-hcs $img "${stem}"
+    /opt/bioformats2raw/bin/bioformats2raw --max_workers ${params.max_n_worker} --no-hcs --tile_width 4096 --tile_height 4096 $img "${stem}"
     """
 }
 
@@ -77,6 +79,8 @@ process Codebook_conversion {
 
     input:
     file(codebook)
+    val(channel_map)
+    val(sep)
 
     output:
     path "taglist.csv", emit: taglist_name
@@ -85,7 +89,7 @@ process Codebook_conversion {
 
     script:
     """
-    codebook_convert.py -csv_file ${codebook}
+    codebook_convert.py -csv_file ${codebook} -channel_map "${channel_map}" -sep "${sep}"
     """
 }
 
@@ -332,7 +336,7 @@ process Filter_decoded_peaks {
 
     input:
     tuple val(stem), path(decoded_peaks)
-    val(prob_thre)
+    each prob_thre
 
     output:
     tuple val(stem), path("${stem}_decoded_df_prob_thresholded_${prob_thre}.tsv")
@@ -369,7 +373,7 @@ process Heatmap_plot {
 
 
 workflow {
-    Codebook_conversion(Channel.fromPath(params.codebook))
+    Codebook_conversion(Channel.fromPath(params.codebook), params.channel_map, params.codebook_sep)
     Get_meatdata(Codebook_conversion.out.taglist_name, Codebook_conversion.out.channel_info_name)
     peak_calling()
     Extract_peak_intensities(
@@ -390,7 +394,7 @@ workflow peak_calling {
     bf2raw(channel.fromPath(params.ome_tif))
     Enhance_spots(bf2raw.out, params.anchor_ch_indexes, channel.from(params.rna_spot_size), params.whitehat)
     if (params.anchor_peaks_tsv != "") {
-        peaks = Channel.fromPath(params.anchor_peaks_tsv)
+        peaks = Channel.from([[params.rna_spot_size, params.anchor_peaks_tsv]])
     } else {
         Call_peaks_in_anchor(Enhance_spots.out.ch_with_peak_img, params.anchor_ch_indexes,
             channel.from(params.trackpy_percentile),
@@ -410,10 +414,11 @@ workflow peak_calling {
 }
 
 workflow Decode {
-    Codebook_conversion(Channel.fromPath(params.codebook))
+    params.proj_code = "SM_BRA"
+    Codebook_conversion(Channel.fromPath(params.codebook), params.channel_map, params.codebook_sep)
     Get_meatdata(Codebook_conversion.out.taglist_name, Codebook_conversion.out.channel_info_name)
 
-    for_decoding = channel.from("HZ_HLB").combine(channel.fromPath(params.peak_profile))
+    for_decoding = channel.from(params.proj_code).combine(channel.fromPath(params.peak_profile))
         .combine(channel.fromPath(params.peak_location))
         .combine(Get_meatdata.out.barcodes)
         .combine(Get_meatdata.out.gene_names)
