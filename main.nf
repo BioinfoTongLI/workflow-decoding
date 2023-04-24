@@ -7,13 +7,13 @@ nextflow.enable.dsl=2
 // minimal parameter set
 params.ome_tif = ''
 params.out_dir = ''
-params.rna_spot_size = [5, 7]
-params.anchor_ch_indexes = 1
-params.prob_threshold = 0.6
-params.whitehat = 'True'
-params.peak_profile_cleanup = 'True'
-params.channel_map = ''
-params.codebook_sep = ","
+params.rna_spot_size = [5, 7] // the rna spot size in pixels to be tested for decoding
+params.anchor_ch_indexes = 1 // anchor channel index, starts from 0
+params.prob_threshold = 0.6 // the probability threshold for decoding restults to keep
+params.whitehat = 'True' // whether to use whitehat filter for spot enhancement
+params.peak_profile_cleanup = 'True'  // whether to clean up the peak profile by removing the background and infeasing the peaks
+params.channel_map = '' // the channel map for the codebook, e.g. "{A: c01 Alexa 647, G: c02 Alexa 488, C: c03 Cy3, T: c04 Cy5}"
+params.codebook_sep = "," // the separator for the codebook
 
 params.peak_profile = ''
 params.peak_location = ''
