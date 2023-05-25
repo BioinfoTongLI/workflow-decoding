@@ -1,0 +1,9 @@
+codebook : "codebook.csv"
+out_dir : "./"
+
+ome_tif : "XXX_optflow_optflow_reg_result_stack_pyramid.tif"
+rna_spot_size : [5]
+anchor_ch_indexes : 1
+prob_threshold : 0.9
+trackpy_percentile : [95, 98]
+trackpy_separation : 3
