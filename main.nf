@@ -185,7 +185,7 @@ process Call_peaks_in_anchor {
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
     cpus 2
-    memory 160.GB
+    memory 260.GB
 
     input:
     tuple val(rna_spot_size), val(stem), file(anchor_zarr)
