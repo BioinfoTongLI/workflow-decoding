@@ -10,9 +10,9 @@ MOUNT_POINT='/lustre/scratch117/cellgen/team283/NXF_WORK/'
 
 TMP_NF_WORK="$MOUNT_POINT/${USER}_decoding_work"
 
-NXF_OPTS='-Dleveldb.mmap=false' NXF_WORK=$TMP_NF_WORK LSB_DEFAULTGROUP='team283' nextflow -trace nextflow.executor run /lustre/scratch117/cellgen/team283/tl10/gmm-decoding/main.nf \
+NXF_OPTS='-Dleveldb.mmap=false' NXF_WORK=$TMP_NF_WORK LSB_DEFAULTGROUP='team283' nextflow -trace nextflow.executor run /lustre/scratch126/cellgen/team283/tl10/workflow-decoding/main.nf \
 	-params-file $1 \
 	-with-report \
 	-profile lsf \
-	-resuem
+	-resume
 	#-entry $2 \
