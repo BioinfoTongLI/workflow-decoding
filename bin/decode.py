@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 from decoding_functions import decoding_function, decoding_output_to_dataframe
 import pickle
-import fire
 
 
 def map_to_index(peak_row):
@@ -43,7 +42,7 @@ def get_column_names(n_ch, n_cyc):
     return R_C_index
 
 
-def main(
+def decode(
     stem,
     spot_profile,
     spot_loc,
@@ -114,4 +113,5 @@ def main(
 
 
 if __name__ == "__main__":
-    fire.Fire(main)
+    import fire
+    fire.Fire(decode)

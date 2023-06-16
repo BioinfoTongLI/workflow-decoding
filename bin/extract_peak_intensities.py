@@ -130,8 +130,8 @@ def main(
 
     Xs, Ys = [], []
     for dx, dy in dXYpair:
-        Ys.append(make_in_range(peaks.y_int + dy, img_Y))
-        Xs.append(make_in_range(peaks.x_int + dx, img_X))
+        Ys.append(make_in_range(peaks.y_int + dy, img_Y - 1))
+        Xs.append(make_in_range(peaks.x_int + dx, img_X - 1))
 
     with open(channel_info, "rb") as fp:
         channel_info = pickle.load(fp)

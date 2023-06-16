@@ -16,14 +16,16 @@ from ome_zarr.writer import write_image
 from ome_zarr.scale import Scaler
 from ome_zarr.io import parse_url
 
-from cucim.skimage.morphology import white_tophat, disk
-
-# from cucim.skimage.exposure import rescale_intensity
-import cupy as cp
-
-# from skimage.morphology import white_tophat, disk
-# from skimage.exposure import rescale_intensity
-# from skimage.restoration import denoise_wavelet
+try:
+    from cucim.skimage.morphology import white_tophat, disk
+    # from cucim.skimage.exposure import rescale_intensity
+    import cupy as cp
+    print("Using cucim")
+except:
+    from skimage.morphology import white_tophat, disk
+    # from skimage.exposure import rescale_intensity
+    # from skimage.restoration import denoise_wavelet
+    print("Using skimage")
 import trackpy as tp
 import numpy as np
 import pathlib
