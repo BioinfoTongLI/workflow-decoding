@@ -33,6 +33,7 @@ params.trackpy_separation = 2
 params.trackpy_search_range = 5
 
 params.gmm_sif = "/lustre/scratch126/cellgen/team283/imaging_sifs/gmm_decode.sif"
+params.bf2raw_sif = '/lustre/scratch126/cellgen/team283/imaging_sifs/bf2raw-0.4.0.sif'
 
 // not used in this version
 /*params.tile_name : "N1234F_tile_names.csv"*/
@@ -47,7 +48,11 @@ params.gmm_sif = "/lustre/scratch126/cellgen/team283/imaging_sifs/gmm_decode.sif
  */
 process bf2raw {
     debug true
-    container "openmicroscopy/bioformats2raw:0.4.0"
+
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        params.bf2raw_sif:
+        'openmicroscopy/bioformats2raw:0.4.0'}"
+
     storeDir params.out_dir + "/raws"
     /*publishDir params.out_dir, mode:"copy"*/
 
@@ -74,9 +79,6 @@ process Codebook_conversion {
 
     storeDir params.out_dir + "/codebook_metadata"
 
-    cpus 1
-    memory "1 GB"
-
     input:
     file(codebook)
     val(channel_map)
@@ -96,9 +98,6 @@ process Codebook_conversion {
 
 process Get_meatdata {
     debug true
-
-    cpus 1
-    memory "1 GB"
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
@@ -129,7 +128,6 @@ process Enhance_spots {
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
         'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
-
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
     storeDir params.out_dir + "/enhanced_anchor_channels"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
@@ -180,12 +178,8 @@ process Call_peaks_in_anchor {
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
         'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
-    containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
     storeDir params.out_dir + "/anchor_spots"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
-
-    cpus 2
-    memory 260.GB
 
     input:
     tuple val(rna_spot_size), val(stem), file(anchor_zarr)
@@ -232,22 +226,15 @@ process Process_peaks {
 process Extract_peak_intensities {
     debug true
 
-    cpus 1
-    memory 200.GB
-
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
         'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
 
-    containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
     storeDir params.out_dir + "/peak_intensities"
     /*publishDir params.out_dir + "/peak_intensities", mode:"copy"*/
 
-    maxForks 1 //this step requires a lot of RAM
-
     input:
     tuple val(rna_spot_size), path(peaks), val(stem), path(imgs), path(channel_info)
-    val(radius_to_extract)
 
     output:
     tuple val(new_stem), file("${new_stem}_extracted_peak_intensities.npy"), file("${new_stem}_peak_locs.csv"), emit: peaks_for_preprocessing
@@ -260,7 +247,7 @@ process Extract_peak_intensities {
         --stem ${new_stem} \
         --channel_info ${channel_info} \
         --coding_cyc_starts_from 1 \
-        --peak_radius ${radius_to_extract}
+        --peak_radius ${rna_spot_size}
     """
 }
 
@@ -268,14 +255,11 @@ process Extract_peak_intensities {
 process Preprocess_peak_profiles {
     debug true
 
-    cpus 1
-    memory 200.GB
-
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
         'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
-
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
+
     storeDir params.out_dir + "/preprocessed_peak_intensities"
     /*publishDir params.out_dir + "/preprocessed_peak_intensities", mode:"copy"*/
 
@@ -323,9 +307,6 @@ process Decode_peaks {
 
 process Filter_decoded_peaks {
     debug true
-
-    label "small_mem"
-    cpus 1
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
@@ -377,8 +358,7 @@ workflow {
     Get_meatdata(Codebook_conversion.out.taglist_name, Codebook_conversion.out.channel_info_name)
     peak_calling()
     Extract_peak_intensities(
-        peak_calling.out.peaks_and_enhanced_raw.combine(Get_meatdata.out.channel_infos),
-        params.trackpy_separation
+        peak_calling.out.peaks_and_enhanced_raw.combine(Get_meatdata.out.channel_infos)
     )
     Preprocess_peak_profiles(Extract_peak_intensities.out.peaks_for_preprocessing, params.peak_profile_cleanup)
     for_decoding = Preprocess_peak_profiles.out.peaks_for_decoding
