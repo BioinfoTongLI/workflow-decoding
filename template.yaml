@@ -1,5 +1,6 @@
 codebook : "codebook.csv"
 out_dir : "./"
+channel_map : "{'Cy5':'A','AF488':'G','Cy3':'C','Atto425':'T','AF750':'T'}"
 
 ome_tif : "XXX_optflow_optflow_reg_result_stack_pyramid.tif"
 rna_spot_size : [5]
@@ -7,3 +8,4 @@ anchor_ch_indexes : 1
 prob_threshold : 0.9
 trackpy_percentile : [95, 98]
 trackpy_separation : 3
+codebook_sep : ','
