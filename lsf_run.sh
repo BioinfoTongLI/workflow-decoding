@@ -10,7 +10,8 @@ MOUNT_POINT='/lustre/scratch126/cellgen/team283/NXF_WORK/'
 
 TMP_NF_WORK="$MOUNT_POINT/${USER}_decoding_work"
 
-NXF_OPTS='-Dleveldb.mmap=false' NXF_WORK=$TMP_NF_WORK nextflow -trace nextflow.executor run /lustre/scratch126/cellgen/team283/tl10/workflow-decoding/main.nf \
+NXF_OPTS='-Dleveldb.mmap=false' NXF_WORK=$TMP_NF_WORK nextflow -trace nextflow.executor run BioinfoTongLI/workflow-decoding \
+	-r develop \
 	-params-file $1 \
 	-with-report \
 	-profile lsf \
