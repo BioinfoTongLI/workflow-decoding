@@ -7,5 +7,5 @@
 #
 
 
-docker build -t gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest .
-singularity build /lustre/scratch126/cellgen/team283/imaging_sifs/gmm_decode.sif docker-daemon:gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest
+docker build -t bioinfotongli/decoding:latest .
+docker push bioinfotongli/decoding:latest
