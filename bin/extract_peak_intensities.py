@@ -106,7 +106,7 @@ def main_multicycle(stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from=
 
 
 def main(
-    stem, raw_zarr, peaks, channel_info, coding_cyc_starts_from, peak_radius=1, n_ch=35
+    stem, raw_zarr, peaks, channel_info, peak_radius=1, coding_cyc_starts_from=1, n_ch=35
 ):
     peak_sur_coord = np.arange(-peak_radius, peak_radius + 1)
     xx, yy = np.meshgrid(peak_sur_coord, peak_sur_coord)

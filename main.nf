@@ -241,13 +241,14 @@ process Extract_peak_intensities {
 
     script:
     new_stem = peaks.baseName
+    def args = task.ext.args ?: ''
     """
     extract_peak_intensities.py --raw_zarr ${imgs}/0 \
         --peaks ${peaks} \
         --stem ${new_stem} \
         --channel_info ${channel_info} \
-        --coding_cyc_starts_from 1 \
-        --peak_radius ${rna_spot_size}
+        --peak_radius ${rna_spot_size} \
+        ${args}
     """
 }
 
