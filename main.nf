@@ -73,6 +73,9 @@ process bf2raw {
 process Codebook_conversion {
     debug true
 
+    label "single_cpu"
+    label "small_mem"
+
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
         'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
@@ -98,6 +101,9 @@ process Codebook_conversion {
 
 process Get_meatdata {
     debug true
+
+    label "single_cpu"
+    label "small_mem"
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
