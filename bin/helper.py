@@ -36,7 +36,10 @@ import dask.array as da
 
 
 def white_tophat_xp(chunk, **kwargs):
-    return white_tophat(xp.array(chunk), **kwargs).get().astype(np.uint16)
+    try:
+        return white_tophat(xp.array(chunk), **kwargs).get().astype(np.uint16)
+    except:
+        return white_tophat(xp.array(chunk), **kwargs).astype(np.uint16)
 
 
 class Helper(object):
