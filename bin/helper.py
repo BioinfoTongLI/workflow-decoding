@@ -153,6 +153,8 @@ class Helper(object):
             del hat_enhenced
             try:
                 xp._default_memory_pool.free_all_blocks()
+            except:
+                pass
 
     def call_peaks(
         self,
