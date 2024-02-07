@@ -19,12 +19,13 @@ from ome_zarr.io import parse_url
 try:
     from cucim.skimage.morphology import white_tophat, disk
     # from cucim.skimage.exposure import rescale_intensity
-    import cupy as cp
+    import cupy as xp
     print("Using cucim")
 except:
     from skimage.morphology import white_tophat, disk
     # from skimage.exposure import rescale_intensity
     # from skimage.restoration import denoise_wavelet
+    import numpy as xp
     print("Using skimage")
 import trackpy as tp
 import numpy as np
@@ -34,8 +35,8 @@ import pickle
 import dask.array as da
 
 
-def white_tophat_cp(chunk, **kwargs):
-    return white_tophat(cp.array(chunk), **kwargs).get().astype(np.uint16)
+def white_tophat_xp(chunk, **kwargs):
+    return white_tophat(xp.array(chunk), **kwargs).get().astype(np.uint16)
 
 
 class Helper(object):
@@ -121,7 +122,7 @@ class Helper(object):
             ch = chs_with_peaks[i].rechunk({0: "auto", 1: "auto"})
             if whitehat:
                 hat_enhenced = ch.map_overlap(
-                    white_tophat_cp,
+                    white_tophat_xp,
                     depth=(diam * 3, diam * 3),
                     footprint=footprint,
                     dtype=np.uint16,
@@ -150,7 +151,8 @@ class Helper(object):
             write_image(image=hat_enhenced.compute(), group=group, axes="yx")
 
             del hat_enhenced
-            cp._default_memory_pool.free_all_blocks()
+            try:
+                xp._default_memory_pool.free_all_blocks()
 
     def call_peaks(
         self,
