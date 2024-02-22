@@ -5,7 +5,7 @@
 nextflow.enable.dsl=2
 
 // minimal parameter set
-params.ome_tif = ''
+params.ome_zarr = ''
 params.out_dir = ''
 params.rna_spot_size = [5, 7] // the rna spot size in pixels to be tested for decoding
 params.anchor_ch_indexes = 1 // anchor channel index, starts from 0
@@ -33,7 +33,6 @@ params.trackpy_separation = 2
 params.trackpy_search_range = 5
 
 params.gmm_sif = "/lustre/scratch126/cellgen/team283/imaging_sifs/gmm_decode.sif"
-params.bf2raw_sif = '/lustre/scratch126/cellgen/team283/imaging_sifs/bf2raw-0.4.0.sif'
 
 // not used in this version
 /*params.tile_name : "N1234F_tile_names.csv"*/
@@ -41,33 +40,6 @@ params.bf2raw_sif = '/lustre/scratch126/cellgen/team283/imaging_sifs/bf2raw-0.4.
 /*params.anchor_available = 1*/
 
 /*params.known_anchor = "c01 Alexa 647"*/
-
-/*
- * bf2raw: The bioformats2raw application converts the input image file to
- * an intermediate directory of tiles in the output directory.
- */
-process bf2raw {
-    debug true
-
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        params.bf2raw_sif:
-        'openmicroscopy/bioformats2raw:0.4.0'}"
-
-    storeDir params.out_dir + "/raws"
-    /*publishDir params.out_dir, mode:"copy"*/
-
-    input:
-    path(img)
-
-    output:
-    tuple val(stem), file("${stem}")
-
-    script:
-    stem = img.baseName
-    """
-    /opt/bioformats2raw/bin/bioformats2raw --max_workers ${params.max_n_worker} --no-hcs --tile_width 4096 --tile_height 4096 $img "${stem}"
-    """
-}
 
 
 process Codebook_conversion {
@@ -378,8 +350,7 @@ workflow {
 }
 
 workflow peak_calling {
-    bf2raw(channel.fromPath(params.ome_tif))
-    Enhance_spots(bf2raw.out, params.anchor_ch_indexes, channel.from(params.rna_spot_size), params.whitehat)
+    Enhance_spots(channel.fromPath(params.ome_zarr), params.anchor_ch_indexes, channel.from(params.rna_spot_size), params.whitehat)
     if (params.anchor_peaks_tsv != "") {
         peaks = Channel.from([[params.rna_spot_size, params.anchor_peaks_tsv]])
     } else {
