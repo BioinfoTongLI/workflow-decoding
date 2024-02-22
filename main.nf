@@ -111,7 +111,7 @@ process Enhance_spots {
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
     input:
-    tuple val(stem), path(zarr)
+    path zarr
     val anchor_ch_index
     each rna_spot_size
     val whitehat
@@ -120,6 +120,7 @@ process Enhance_spots {
     tuple val(rna_spot_size), val(stem), path("${stem}_spot_enhanced_diam_${rna_spot_size}"), emit:ch_with_peak_img
 
     script:
+    stem = file(zarr).baseName
     """
     helper.py enhance_all --diam ${rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem} --whitehat ${whitehat} --anchor_ch_index ${anchor_ch_index}
     """
@@ -350,7 +351,7 @@ workflow {
 }
 
 workflow peak_calling {
-    Enhance_spots(channel.fromPath(params.ome_zarr), params.anchor_ch_indexes, channel.from(params.rna_spot_size), params.whitehat)
+    Enhance_spots(params.ome_zarr, params.anchor_ch_indexes, channel.from(params.rna_spot_size), params.whitehat)
     if (params.anchor_peaks_tsv != "") {
         peaks = Channel.from([[params.rna_spot_size, params.anchor_peaks_tsv]])
     } else {
