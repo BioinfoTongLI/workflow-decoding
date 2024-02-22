@@ -148,3 +148,23 @@ dmypy.json
 .prof
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+# VIM
+*.un~
+*.swp
+
+# Nextflow
+.nextflow*
+work/
+
+# output
+trackpy*
+human_brain*
+mouse_brain*
+decoding_metadata/
+run.py
+test/
+output/
+
+# container
+*.sif
