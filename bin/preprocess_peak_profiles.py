@@ -22,7 +22,11 @@ def main(stem, profiles, spot_loc, cleanup:bool=False):
     spot_loc = pd.read_csv(spot_loc)
     if cleanup:
         xp_profile = xp.array(np.nan_to_num(spot_profile))
-        mask = (xp_profile > 0).any((1, 2)).get()  # remove any spot that has  zero intensity in any channel/cycle
+        # remove any spot that has  zero intensity in any channel/cycle
+        try:
+            mask = (xp_profile > 0).any((1, 2)).get()
+        except AttributeError:
+            mask = (xp_profile > 0).any((1, 2))
         filtered_profiles = spot_profile[mask]
         filtered_spot = spot_loc[mask]
     else:
