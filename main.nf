@@ -34,13 +34,6 @@ params.trackpy_search_range = 5
 
 params.gmm_sif = "/lustre/scratch126/cellgen/team283/imaging_sifs/gmm_decode.sif"
 
-// not used in this version
-/*params.tile_name : "N1234F_tile_names.csv"*/
-/*params.coding_ch_starts_from = 0*/
-/*params.anchor_available = 1*/
-
-/*params.known_anchor = "c01 Alexa 647"*/
-
 
 process Codebook_conversion {
     debug true
@@ -145,7 +138,6 @@ process Call_peaks_in_anchor {
 
     output:
     tuple val(rna_spot_size), path("${stem}_detected_peaks_diam_${rna_spot_size}_percentile_${percentile}_sep_${separation}_search_range_${search_range}.tsv"), emit: peaks_from_anchor_chs
-    /*tuple val(stem), file("${stem}_tracked_peaks.tsv"), emit: tracked_peaks_from_anchor_chs*/
 
     script:
     """
@@ -187,6 +179,8 @@ process Extract_peak_intensities {
 process Preprocess_peak_profiles {
     debug true
 
+    label "single_cpu"
+
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
         'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
@@ -212,8 +206,7 @@ process Preprocess_peak_profiles {
 process Decode_peaks {
     debug true
 
-    /*label "large_mem"*/
-    /*label "huge_mem"*/
+    label "single_cpu"
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
@@ -239,6 +232,8 @@ process Decode_peaks {
 
 process Filter_decoded_peaks {
     debug true
+
+    label "single_cpu"
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
@@ -324,7 +319,7 @@ workflow peak_calling {
 }
 
 workflow Decode {
-    params.proj_code = "SM_BRA"
+    params.proj_code = "" // the project code for the data, e.g SM_BRA
     Codebook_conversion(Channel.fromPath(params.codebook), params.channel_map, params.codebook_sep)
     Get_meatdata(Codebook_conversion.out.taglist_name, Codebook_conversion.out.channel_info_name)
 
