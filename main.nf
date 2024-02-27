@@ -127,30 +127,6 @@ process Enhance_spots {
 }
 
 
-process Deepblink_and_Track {
-    debug true
-    cache "lenient"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
-
-    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
-    /*storeDir params.out_dir + "/anchor_spots"*/
-    publishDir params.out_dir + "/anchor_spots", mode:"copy"
-
-    input:
-    tuple val(stem), path(zarr)
-
-    output:
-    tuple val(stem), file("${stem}_max_*_peaks.tsv"), emit: peaks_from_anchor_chs
-
-    script:
-    """
-    python3 ${workflow.projectDir}/py_scripts/deepblink_wrap.py --zarr_in ${zarr}/0 --stem ${stem} --tp_search_range 3
-    """
-}
-
-
 process Call_peaks_in_anchor {
     debug true
 
@@ -174,30 +150,6 @@ process Call_peaks_in_anchor {
     script:
     """
     helper.py call_peaks --zarr_in ${anchor_zarr}/0/${anchor_ch_index} --stem ${stem} --diam ${rna_spot_size} --tp_percentile ${percentile} --peak_separation ${separation} --tp_search_range ${search_range}
-    """
-}
-
-
-process Process_peaks {
-    debug true
-    cache "lenient"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
-
-    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
-    /*storeDir params.out_dir + "/anchor_spots"*/
-    publishDir params.out_dir + "/anchor_spots", mode:"copy"
-
-    input:
-    tuple val(stem), path(track_tsv)
-
-    output:
-    tuple val(stem), file("${stem}_processed_tracks.tsv"), emit: tracked_peaks
-
-    script:
-    """
-    /opt/conda/envs/rapids/bin/python ${workflow.projectDir}/py_scripts/process_tracks.py --tsv ${track_tsv} --stem ${stem}
     """
 }
 
@@ -361,7 +313,6 @@ workflow peak_calling {
             channel.from(params.trackpy_search_range)
         )
         peaks = Call_peaks_in_anchor.out.peaks_from_anchor_chs
-        /*Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)*/
     }
     peaks.combine(Enhance_spots.out.ch_with_peak_img)
         .map{it -> [it[0], it[1], it[3], it[4]]}
