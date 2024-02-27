@@ -14,14 +14,14 @@ import numpy as np
 import logging
 try:
     import cupy as xp
-    logging.info(cp.__version__)
-    cp.cuda.Device(0).use()
-except ImportError:
+    logging.info(xp.__version__)
+    xp.cuda.Device(0).use()
+except:
     import numpy as xp
 import pandas as pd
 
 def main(stem, profiles, spot_loc, cleanup:bool=False):
-    spot_profile = xp.load(profiles) if xp == cupy else np.load(profiles)
+    spot_profile = xp.load(profiles)
     spot_loc = pd.read_csv(spot_loc)
     if cleanup:
         xp_profile = xp.array(np.nan_to_num(spot_profile))
