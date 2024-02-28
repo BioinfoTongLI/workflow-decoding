@@ -43,7 +43,7 @@ process Codebook_conversion {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
 
     storeDir params.out_dir + "/codebook_metadata"
 
@@ -72,7 +72,7 @@ process Get_meatdata {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
 
     storeDir params.out_dir + "/codebook_metadata"
     /*publishDir params.out_dir + "/decoding_metadata", mode:"copy"*/
@@ -98,7 +98,7 @@ process Enhance_spots {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
     storeDir params.out_dir + "/enhanced_anchor_channels"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
@@ -125,7 +125,7 @@ process Call_peaks_in_anchor {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     storeDir params.out_dir + "/anchor_spots"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
@@ -151,7 +151,7 @@ process Extract_peak_intensities {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
 
     storeDir params.out_dir + "/peak_intensities"
     /*publishDir params.out_dir + "/peak_intensities", mode:"copy"*/
@@ -183,7 +183,7 @@ process Preprocess_peak_profiles {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
 
     storeDir params.out_dir + "/preprocessed_peak_intensities"
@@ -210,7 +210,7 @@ process Decode_peaks {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
 
     storeDir params.out_dir + "decoded"
@@ -237,7 +237,7 @@ process Filter_decoded_peaks {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
 
     storeDir params.out_dir + "filtered_decoded"
