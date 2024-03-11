@@ -11,15 +11,25 @@
 """
 import fire
 import numpy as np
-import cupy as cp
+import logging
+try:
+    import cupy as xp
+    logging.info(xp.__version__)
+    xp.cuda.Device(0).use()
+except:
+    import numpy as xp
 import pandas as pd
 
 def main(stem, profiles, spot_loc, cleanup:bool=False):
-    spot_profile = np.load(profiles)
+    spot_profile = xp.load(profiles)
     spot_loc = pd.read_csv(spot_loc)
     if cleanup:
-        cp_profile = cp.array(np.nan_to_num(spot_profile))
-        mask = (cp_profile > 0).any((1, 2)).get()  # remove any spot that has  zero intensity in any channel/cycle
+        xp_profile = xp.array(np.nan_to_num(spot_profile))
+        # remove any spot that has  zero intensity in any channel/cycle
+        try:
+            mask = (xp_profile > 0).any((1, 2)).get()
+        except AttributeError:
+            mask = (xp_profile > 0).any((1, 2))
         filtered_profiles = spot_profile[mask]
         filtered_spot = spot_loc[mask]
     else:

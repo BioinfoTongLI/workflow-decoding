@@ -5,7 +5,7 @@
 nextflow.enable.dsl=2
 
 // minimal parameter set
-params.ome_tif = ''
+params.ome_zarr = ''
 params.out_dir = ''
 params.rna_spot_size = [5, 7] // the rna spot size in pixels to be tested for decoding
 params.anchor_ch_indexes = 1 // anchor channel index, starts from 0
@@ -33,41 +33,6 @@ params.trackpy_separation = 2
 params.trackpy_search_range = 5
 
 params.gmm_sif = "/lustre/scratch126/cellgen/team283/imaging_sifs/gmm_decode.sif"
-params.bf2raw_sif = '/lustre/scratch126/cellgen/team283/imaging_sifs/bf2raw-0.4.0.sif'
-
-// not used in this version
-/*params.tile_name : "N1234F_tile_names.csv"*/
-/*params.coding_ch_starts_from = 0*/
-/*params.anchor_available = 1*/
-
-/*params.known_anchor = "c01 Alexa 647"*/
-
-/*
- * bf2raw: The bioformats2raw application converts the input image file to
- * an intermediate directory of tiles in the output directory.
- */
-process bf2raw {
-    debug true
-
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        params.bf2raw_sif:
-        'openmicroscopy/bioformats2raw:0.4.0'}"
-
-    storeDir params.out_dir + "/raws"
-    /*publishDir params.out_dir, mode:"copy"*/
-
-    input:
-    path(img)
-
-    output:
-    tuple val(stem), file("${stem}")
-
-    script:
-    stem = img.baseName
-    """
-    /opt/bioformats2raw/bin/bioformats2raw --max_workers ${params.max_n_worker} --no-hcs --tile_width 4096 --tile_height 4096 $img "${stem}"
-    """
-}
 
 
 process Codebook_conversion {
@@ -78,7 +43,7 @@ process Codebook_conversion {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
 
     storeDir params.out_dir + "/codebook_metadata"
 
@@ -107,7 +72,7 @@ process Get_meatdata {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
 
     storeDir params.out_dir + "/codebook_metadata"
     /*publishDir params.out_dir + "/decoding_metadata", mode:"copy"*/
@@ -133,13 +98,13 @@ process Enhance_spots {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
     storeDir params.out_dir + "/enhanced_anchor_channels"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
     input:
-    tuple val(stem), path(zarr)
+    path zarr
     val anchor_ch_index
     each rna_spot_size
     val whitehat
@@ -148,32 +113,9 @@ process Enhance_spots {
     tuple val(rna_spot_size), val(stem), path("${stem}_spot_enhanced_diam_${rna_spot_size}"), emit:ch_with_peak_img
 
     script:
+    stem = file(zarr).baseName
     """
     helper.py enhance_all --diam ${rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem} --whitehat ${whitehat} --anchor_ch_index ${anchor_ch_index}
-    """
-}
-
-
-process Deepblink_and_Track {
-    debug true
-    cache "lenient"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
-
-    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
-    /*storeDir params.out_dir + "/anchor_spots"*/
-    publishDir params.out_dir + "/anchor_spots", mode:"copy"
-
-    input:
-    tuple val(stem), path(zarr)
-
-    output:
-    tuple val(stem), file("${stem}_max_*_peaks.tsv"), emit: peaks_from_anchor_chs
-
-    script:
-    """
-    python3 ${workflow.projectDir}/py_scripts/deepblink_wrap.py --zarr_in ${zarr}/0 --stem ${stem} --tp_search_range 3
     """
 }
 
@@ -183,7 +125,7 @@ process Call_peaks_in_anchor {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     storeDir params.out_dir + "/anchor_spots"
     /*publishDir params.out_dir + "/anchor_spots", mode:"copy"*/
 
@@ -196,35 +138,10 @@ process Call_peaks_in_anchor {
 
     output:
     tuple val(rna_spot_size), path("${stem}_detected_peaks_diam_${rna_spot_size}_percentile_${percentile}_sep_${separation}_search_range_${search_range}.tsv"), emit: peaks_from_anchor_chs
-    /*tuple val(stem), file("${stem}_tracked_peaks.tsv"), emit: tracked_peaks_from_anchor_chs*/
 
     script:
     """
     helper.py call_peaks --zarr_in ${anchor_zarr}/0/${anchor_ch_index} --stem ${stem} --diam ${rna_spot_size} --tp_percentile ${percentile} --peak_separation ${separation} --tp_search_range ${search_range}
-    """
-}
-
-
-process Process_peaks {
-    debug true
-    cache "lenient"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
-
-    containerOptions "--gpus all -v ${workflow.projectDir}:${workflow.projectDir}"
-    /*storeDir params.out_dir + "/anchor_spots"*/
-    publishDir params.out_dir + "/anchor_spots", mode:"copy"
-
-    input:
-    tuple val(stem), path(track_tsv)
-
-    output:
-    tuple val(stem), file("${stem}_processed_tracks.tsv"), emit: tracked_peaks
-
-    script:
-    """
-    /opt/conda/envs/rapids/bin/python ${workflow.projectDir}/py_scripts/process_tracks.py --tsv ${track_tsv} --stem ${stem}
     """
 }
 
@@ -234,7 +151,7 @@ process Extract_peak_intensities {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
 
     storeDir params.out_dir + "/peak_intensities"
     /*publishDir params.out_dir + "/peak_intensities", mode:"copy"*/
@@ -262,9 +179,11 @@ process Extract_peak_intensities {
 process Preprocess_peak_profiles {
     debug true
 
+    label "single_cpu"
+
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
 
     storeDir params.out_dir + "/preprocessed_peak_intensities"
@@ -287,12 +206,11 @@ process Preprocess_peak_profiles {
 process Decode_peaks {
     debug true
 
-    /*label "large_mem"*/
-    /*label "huge_mem"*/
+    label "single_cpu"
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
 
     storeDir params.out_dir + "decoded"
@@ -315,9 +233,11 @@ process Decode_peaks {
 process Filter_decoded_peaks {
     debug true
 
+    label "single_cpu"
+
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         params.gmm_sif:
-        'gitlab-registry.internal.sanger.ac.uk/tl10/gmm-decoding:latest'}"
+        'bioinfotongli/decoding:latest'}"
     containerOptions "${ workflow.containerEngine == 'singularity' ? '--nv':'--gpus all'}"
 
     storeDir params.out_dir + "filtered_decoded"
@@ -378,8 +298,7 @@ workflow {
 }
 
 workflow peak_calling {
-    bf2raw(channel.fromPath(params.ome_tif))
-    Enhance_spots(bf2raw.out, params.anchor_ch_indexes, channel.from(params.rna_spot_size), params.whitehat)
+    Enhance_spots(params.ome_zarr, params.anchor_ch_indexes, channel.from(params.rna_spot_size), params.whitehat)
     if (params.anchor_peaks_tsv != "") {
         peaks = Channel.from([[params.rna_spot_size, params.anchor_peaks_tsv]])
     } else {
@@ -389,7 +308,6 @@ workflow peak_calling {
             channel.from(params.trackpy_search_range)
         )
         peaks = Call_peaks_in_anchor.out.peaks_from_anchor_chs
-        /*Process_peaks(Deepblink_and_Track.out.peaks_from_anchor_chs)*/
     }
     peaks.combine(Enhance_spots.out.ch_with_peak_img)
         .map{it -> [it[0], it[1], it[3], it[4]]}
@@ -401,7 +319,7 @@ workflow peak_calling {
 }
 
 workflow Decode {
-    params.proj_code = "SM_BRA"
+    params.proj_code = "" // the project code for the data, e.g SM_BRA
     Codebook_conversion(Channel.fromPath(params.codebook), params.channel_map, params.codebook_sep)
     Get_meatdata(Codebook_conversion.out.taglist_name, Codebook_conversion.out.channel_info_name)
 
