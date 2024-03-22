@@ -115,6 +115,7 @@ process Enhance_spots {
     script:
     stem = file(zarr).baseName
     """
+    export CUPY_CACHE_DIR=/tmp/
     helper.py enhance_all --diam ${rna_spot_size} --zarr_in ${zarr}/0 --stem ${stem} --whitehat ${whitehat} --anchor_ch_index ${anchor_ch_index}
     """
 }
